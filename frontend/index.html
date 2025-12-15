@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Create Fixed Asset</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Create Fixed Asset</h2>
+
+    <form id="assetForm">
+        <label>Asset Name</label>
+        <input type="text" id="asset_name" required>
+
+        <label>Asset Category</label>
+        <select id="asset_category" required>
+            <option value="COMPUTERS">Computers</option>
+            <option value="FURNITURE">Furniture</option>
+        </select>
+
+        <label>Purchase Cost</label>
+        <input type="number" id="asset_cost" required>
+
+        <label>Purchase Date</label>
+        <input type="date" id="purchase_date" required>
+
+        <label>Depreciation Start Date</label>
+        <input type="date" id="depreciation_start_date" required>
+
+        <label>Useful Life (Months)</label>
+        <input type="number" id="useful_life_months" required>
+
+        <label>Salvage Value</label>
+        <input type="number" id="salvage_value" value="0">
+
+        <button type="submit">Create Asset</button>
+    </form>
+
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+document.getElementById("assetForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const resultBox = document.getElementById("result");
+    resultBox.style.display = "none";
+
+    const payload = {
+        asset_name: asset_name.value,
+        asset_category: asset_category.value,
+        asset_cost: Number(asset_cost.value),
+        purchase_date: purchase_date.value,
+        depreciation_start_date: depreciation_start_date.value,
+        useful_life_months: Number(useful_life_months.value),
+        salvage_value: Number(salvage_value.value)
+    };
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/assets/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+            resultBox.className = "result success";
+            resultBox.textContent =
+                `Asset created successfully\nAsset Number: ${data.asset_number}`;
+        } else {
+            resultBox.className = "result error";
+            resultBox.textContent = "Error creating asset";
+        }
+    } catch (err) {
+        resultBox.className = "result error";
+        resultBox.textContent = "Connection error";
+    }
+
+    resultBox.style.display = "block";
+});
+</script>
+
+</body>
+</html>
