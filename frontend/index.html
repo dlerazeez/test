@@ -59,7 +59,7 @@ document.getElementById("assetForm").addEventListener("submit", async function(e
     };
 
     try {
-        const res = await fetch("http://127.0.0.1:8000/assets/create", {
+        const res = await fetch("https://asset-service-eff1.onrender.com/assets/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
