@@ -183,6 +183,7 @@ def list_all_assets():
             f"{ZOHO_BASE}/fixedassets",
             params={
                 "organization_id": ZOHO_ORG_ID,
+                "filter_by": "Status.All",
                 "page": page,
                 "per_page": per_page,
             },
