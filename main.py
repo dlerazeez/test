@@ -24,7 +24,7 @@ if not all([ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN]):
     raise RuntimeError("Missing Zoho OAuth environment variables")
 
 # -------------------------------------------------
-# Token cache (in-memory)
+# OAuth token cache (in-memory)
 # -------------------------------------------------
 _access_token = None
 _token_expiry = 0
@@ -80,7 +80,7 @@ def serve_frontend():
 
 
 # -------------------------------------------------
-# Fixed Asset mapping (locked)
+# Fixed Asset mapping (LOCKED)
 # -------------------------------------------------
 FIXED_ASSET_TYPE_MAP = {
     "COMPUTERS": {
@@ -168,7 +168,7 @@ def create_asset(payload: dict):
 
 
 # -------------------------------------------------
-# Retrieve ALL Fixed Assets
+# Retrieve ALL Fixed Assets (Draft + Active + Others)
 # -------------------------------------------------
 @app.get("/assets/all")
 def list_all_assets():
