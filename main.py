@@ -209,3 +209,15 @@ def list_all_assets():
         "count": len(all_assets),
         "assets": all_assets,
     }
+@app.get("/assets/by-id/{asset_id}")
+def get_asset_by_id(asset_id: str):
+    token = get_access_token()
+
+    resp = requests.get(
+        f"{ZOHO_BASE}/fixedassets/{asset_id}",
+        params={"organization_id": ZOHO_ORG_ID},
+        headers={"Authorization": f"Zoho-oauthtoken {token}"},
+        timeout=30,
+    )
+
+    return resp.json()
