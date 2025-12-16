@@ -8,7 +8,7 @@ import os
 import time
 
 # -------------------------------------------------
-# Load env
+# Load environment variables
 # -------------------------------------------------
 load_dotenv()
 
@@ -21,7 +21,7 @@ ZOHO_CLIENT_SECRET = os.getenv("ZOHO_CLIENT_SECRET")
 ZOHO_REFRESH_TOKEN = os.getenv("ZOHO_REFRESH_TOKEN")
 
 if not all([ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN]):
-    raise RuntimeError("Zoho OAuth environment variables missing")
+    raise RuntimeError("Missing Zoho OAuth environment variables")
 
 # -------------------------------------------------
 # Token cache (in-memory)
@@ -33,11 +33,9 @@ _token_expiry = 0
 def get_access_token():
     global _access_token, _token_expiry
 
-    # Token still valid
     if _access_token and time.time() < _token_expiry:
         return _access_token
 
-    # Refresh token
     resp = requests.post(
         ZOHO_AUTH_URL,
         data={
@@ -61,7 +59,7 @@ def get_access_token():
 
 
 # -------------------------------------------------
-# FastAPI
+# FastAPI app
 # -------------------------------------------------
 app = FastAPI(title="Fixed Asset Service")
 
@@ -82,7 +80,7 @@ def serve_frontend():
 
 
 # -------------------------------------------------
-# Fixed asset mapping (locked)
+# Fixed Asset mapping (locked)
 # -------------------------------------------------
 FIXED_ASSET_TYPE_MAP = {
     "COMPUTERS": {
@@ -101,7 +99,7 @@ FIXED_ASSET_TYPE_MAP = {
 
 
 # -------------------------------------------------
-# Create fixed asset
+# Create Fixed Asset (Draft)
 # -------------------------------------------------
 @app.post("/assets/create")
 def create_asset(payload: dict):
@@ -166,4 +164,47 @@ def create_asset(payload: dict):
         "fixed_asset_id": fa["fixed_asset_id"],
         "asset_number": fa["asset_number"],
         "status": fa["status"],
+    }
+
+
+# -------------------------------------------------
+# Retrieve ALL Fixed Assets
+# -------------------------------------------------
+@app.get("/assets/all")
+def list_all_assets():
+    token = get_access_token()
+
+    page = 1
+    per_page = 200
+    all_assets = []
+
+    while True:
+        resp = requests.get(
+            f"{ZOHO_BASE}/fixedassets",
+            params={
+                "organization_id": ZOHO_ORG_ID,
+                "page": page,
+                "per_page": per_page,
+            },
+            headers={"Authorization": f"Zoho-oauthtoken {token}"},
+            timeout=30,
+        )
+
+        data = resp.json()
+
+        if data.get("code") != 0:
+            raise HTTPException(400, data)
+
+        all_assets.extend(data.get("fixed_assets", []))
+
+        page_context = data.get("page_context", {})
+        if not page_context.get("has_more_page"):
+            break
+
+        page += 1
+
+    return {
+        "ok": True,
+        "count": len(all_assets),
+        "assets": all_assets,
     }
