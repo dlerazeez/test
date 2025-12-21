@@ -12,7 +12,7 @@ from app.routers.assets import router as assets_router
 from app.routers.coa import router as coa_router
 from app.routers.expenses import router as expenses_router
 from app.routers.vendors import router as vendors_router
-from app.routers.pending import router as pending_router
+from app.routers.pending_expenses import router as pending_router
 
 
 def create_app(base_dir: str | None = None) -> FastAPI:
