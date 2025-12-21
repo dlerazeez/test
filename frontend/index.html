@@ -6,16 +6,33 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Assets & Expenses</title>
-  <link rel="stylesheet" href="/static/style.css?v=20">
+  <link rel="stylesheet" href="/static/style.css?v=40">
 </head>
 <body>
 
 <div class="layout">
 
+  <!-- Left sidebar -->
+  <aside class="sidebar">
+    <div class="sidebarCard">
+      <div class="sidebarTitle">Navigation</div>
+      <button id="navHome" class="navBtn active" type="button">Home</button>
+      <button id="navAssets" class="navBtn" type="button">Assets</button>
+      <button id="navExpenses" class="navBtn" type="button">Expenses</button>
+    </div>
+  </aside>
+
   <div class="content">
 
+    <!-- Blank / Home -->
+    <section id="homeSection" class="section">
+      <div class="blank">
+        <!-- Intentionally blank content area -->
+      </div>
+    </section>
+
     <!-- ASSETS SECTION -->
-    <section id="assetsSection" class="section">
+    <section id="assetsSection" class="section hidden">
       <div class="card">
         <div class="cardHeader">
           <div>
@@ -82,119 +99,214 @@
       <div class="card">
         <div class="cardHeader">
           <div>
-            <h1>Create Expense</h1>
-            <div class="subtitle">Expense will be created in Zoho Books</div>
+            <h1>Expenses</h1>
+            <div class="subtitle">Create pending expenses, retrieve posted expenses, and manage approvals later</div>
           </div>
           <div class="badge">Expenses</div>
         </div>
 
         <div class="hr"></div>
 
-        <form id="expenseForm">
-          <div class="formGrid">
-
-            <div class="field">
-              <label>Date</label>
-              <input type="date" id="exp_date" required>
-            </div>
-
-            <div class="field">
-              <label>Amount</label>
-              <input type="number" step="0.01" id="exp_amount" required>
-            </div>
-
-            <div class="field">
-              <label>Expense Account</label>
-              <select id="exp_account_id" required>
-                <option value="">Loading…</option>
-              </select>
-              <div class="hint" id="exp_account_hint"></div>
-            </div>
-
-            <div class="field">
-              <label>Paid Through</label>
-              <select id="exp_paid_through_account_id" required>
-                <option value="">Loading…</option>
-              </select>
-              <div class="hint" id="paid_through_hint"></div>
-            </div>
-            
-<div class="field full">
-  <label>Reference</label>
-  <input id="exp_reference" placeholder="Optional">
-</div>
-            <div class="field full">
-              <label>Notes</label>
-              <input id="exp_description" placeholder="Optional">
-            </div>
-
-            <div class="field full">
-              <label>Vendor (optional)</label>
-              <select id="exp_vendor_id">
-                <option value="">No vendor</option>
-              </select>
-            </div>
-
-            <div class="field full">
-              <label>Receipt (optional)</label>
-              <input type="file" id="exp_receipt" accept="image/*,application/pdf">
-            </div>
-
-          </div>
-
-          <div class="actions">
-            <button id="expenseSubmitBtn" class="primary" type="submit">Create Expense</button>
-          </div>
-        </form>
-
-        <div class="row">
-          <button id="expenseListBtn" type="button" class="secondary">List Expenses</button>
-          <input id="expenseSearchText" class="inlineInput" placeholder="Search text (optional)">
-          <select id="expenseFilterBy" class="inlineSelect">
-            <option value="Status.All">Status.All</option>
-            <option value="Status.Unbilled">Status.Unbilled</option>
-            <option value="Status.Billed">Status.Billed</option>
-            <option value="Status.Reimbursed">Status.Reimbursed</option>
-          </select>
+        <div class="moduleTabs">
+          <button id="btnExpCreate" class="tabBtn active" type="button">Create Expense</button>
+          <button id="btnExpRetrieve" class="tabBtn" type="button">Retrieve Expenses</button>
+          <button id="btnExpPending" class="tabBtn" type="button">Pending Expenses</button>
         </div>
 
-        <div id="expenseResult" class="result hidden"></div>
+        <!-- CREATE (Pending) -->
+        <section id="expCreatePanel" class="panel">
+          <form id="expenseForm">
+            <div class="formGrid">
 
-        <div id="expenseTableWrap" class="tableWrap hidden">
-          <table class="table" id="expenseTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Description</th>
-                <th>Expense ID</th>
-                <th>Receipt</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody id="expenseTableBody"></tbody>
-          </table>
-        </div>
+              <div class="field">
+                <label>Date</label>
+                <input type="date" id="exp_date" required>
+              </div>
 
-        <pre id="expenseDetails" class="details hidden"></pre>
+              <div class="field">
+                <label>Amount</label>
+                <input type="number" step="0.01" id="exp_amount" required>
+              </div>
 
-        <input type="file" id="receiptFile" class="hidden" accept="image/*,application/pdf">
+              <div class="field">
+                <label>Expense Account</label>
+                <select id="exp_account_id" required>
+                  <option value="">Loading…</option>
+                </select>
+                <div class="hint" id="exp_account_hint"></div>
+              </div>
+
+              <div class="field">
+                <label>Paid Through</label>
+                <select id="exp_paid_through_account_id" required>
+                  <option value="">Loading…</option>
+                </select>
+                <div class="hint" id="paid_through_hint"></div>
+              </div>
+
+              <div class="field full">
+                <label>Reference</label>
+                <input id="exp_reference" placeholder="Optional">
+              </div>
+
+              <div class="field full">
+                <label>Notes</label>
+                <input id="exp_notes" placeholder="Optional">
+              </div>
+
+              <div class="field full">
+                <label>Vendor (optional)</label>
+                <select id="exp_vendor_id">
+                  <option value="">No vendor</option>
+                </select>
+              </div>
+
+              <div class="field full">
+                <label>Attachment (optional)</label>
+                <input type="file" id="exp_receipt" accept="image/*,application/pdf">
+              </div>
+
+            </div>
+
+            <div class="actions">
+              <button id="expenseSubmitBtn" class="primary" type="submit">Create Pending Expense</button>
+            </div>
+          </form>
+
+          <div id="expenseResult" class="result hidden"></div>
+        </section>
+
+        <!-- RETRIEVE (Zoho posted) -->
+        <section id="expRetrievePanel" class="panel hidden">
+          <div class="row">
+            <div class="field inlineField">
+              <label>From</label>
+              <input type="date" id="zoho_from">
+            </div>
+            <div class="field inlineField">
+              <label>To</label>
+              <input type="date" id="zoho_to">
+            </div>
+            <button id="expenseListBtn" type="button" class="secondary">Retrieve Expenses</button>
+          </div>
+
+          <div id="zohoResult" class="result hidden"></div>
+
+          <div id="expenseTableWrap" class="tableWrap hidden">
+            <table class="table" id="expenseTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Vendor</th>
+                  <th>Reference</th>
+                  <th>Receipt / Attach</th>
+                  <th>View / Edit</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- PENDING -->
+        <section id="expPendingPanel" class="panel hidden">
+          <div class="row">
+            <div class="field inlineField">
+              <label>From</label>
+              <input type="date" id="pending_from">
+            </div>
+            <div class="field inlineField">
+              <label>To</label>
+              <input type="date" id="pending_to">
+            </div>
+            <button id="pendingListBtn" type="button" class="secondary">Retrieve Pending</button>
+          </div>
+
+          <div id="pendingResult" class="result hidden"></div>
+
+          <div id="pendingTableWrap" class="tableWrap hidden">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Vendor</th>
+                  <th>Reference</th>
+                  <th>Attachments</th>
+                  <th>View / Edit</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
     </section>
 
   </div>
-
-  <!-- Right sidebar -->
-  <aside class="sidebar">
-    <div class="sidebarCard">
-      <div class="sidebarTitle">Navigation</div>
-      <button id="navAssets" class="navBtn active" type="button">Assets</button>
-      <button id="navExpenses" class="navBtn" type="button">Expenses</button>
-    </div>
-  </aside>
-
 </div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="modal hidden">
+  <div class="modalCard">
+    <div class="modalHeader">
+      <div>
+        <div class="modalTitle">Edit Expense</div>
+        <div class="modalSub" id="editMeta"></div>
+      </div>
+      <button id="editClose" class="btnSmall secondary" type="button">Close</button>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="formGrid">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="edit_date">
+      </div>
+
+      <div class="field">
+        <label>Amount</label>
+        <input type="number" step="0.01" id="edit_amount">
+      </div>
+
+      <div class="field">
+        <label>Expense Account</label>
+        <select id="edit_account_id"></select>
+      </div>
+
+      <div class="field">
+        <label>Paid Through</label>
+        <select id="edit_paid_through_account_id"></select>
+      </div>
+
+      <div class="field full">
+        <label>Reference</label>
+        <input id="edit_reference">
+      </div>
+
+      <div class="field full">
+        <label>Notes</label>
+        <input id="edit_notes">
+      </div>
+
+      <div class="field full">
+        <label>Vendor</label>
+        <select id="edit_vendor_id"></select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="editSave" class="primary" type="button">Save Changes</button>
+    </div>
+
+    <div id="editResult" class="result hidden"></div>
+  </div>
+</div>
+
+<input type="file" id="hiddenFilePicker" class="hidden" accept="image/*,application/pdf">
 
 <script>
   function escapeHtml(str) {
@@ -230,7 +342,7 @@
     opt0.textContent = placeholder || "Select…";
     selectEl.appendChild(opt0);
 
-    accounts.forEach(a => {
+    (accounts || []).forEach(a => {
       const opt = document.createElement("option");
       opt.value = a.account_id;
       const code = a.account_code ? `${a.account_code} — ` : "";
@@ -243,12 +355,19 @@
     });
   }
 
+  function fillVendors(selectEl, vendors) {
+    selectEl.innerHTML = `<option value="">No vendor</option>`;
+    (vendors || []).forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v.contact_id || "";
+      opt.textContent = v.contact_name || v.contact_id || "";
+      selectEl.appendChild(opt);
+    });
+  }
+
   function updateHint(selectEl, hintEl) {
     const opt = selectEl.options[selectEl.selectedIndex];
-    if (!opt || !opt.value) {
-      hintEl.textContent = "";
-      return;
-    }
+    if (!opt || !opt.value) { hintEl.textContent = ""; return; }
     const code = opt.dataset.code ? `Code: ${opt.dataset.code}` : "";
     const type = opt.dataset.type ? `Type: ${opt.dataset.type}` : "";
     const cur = opt.dataset.currency ? `Currency: ${opt.dataset.currency}` : "";
@@ -256,28 +375,29 @@
   }
 
   // Navigation
+  const homeSection = document.getElementById("homeSection");
   const assetsSection = document.getElementById("assetsSection");
   const expensesSection = document.getElementById("expensesSection");
+
+  const navHome = document.getElementById("navHome");
   const navAssets = document.getElementById("navAssets");
   const navExpenses = document.getElementById("navExpenses");
 
-  function showSection(which) {
-    if (which === "assets") {
-      assetsSection.classList.remove("hidden");
-      expensesSection.classList.add("hidden");
-      navAssets.classList.add("active");
-      navExpenses.classList.remove("active");
-    } else {
-      expensesSection.classList.remove("hidden");
-      assetsSection.classList.add("hidden");
-      navExpenses.classList.add("active");
-      navAssets.classList.remove("active");
-    }
+  function setActiveNav(btn) {
+    [navHome, navAssets, navExpenses].forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
   }
 
-  navAssets.addEventListener("click", () => showSection("assets"));
+  function showOnly(section) {
+    [homeSection, assetsSection, expensesSection].forEach(s => s.classList.add("hidden"));
+    section.classList.remove("hidden");
+  }
+
+  navHome.addEventListener("click", () => { setActiveNav(navHome); showOnly(homeSection); });
+  navAssets.addEventListener("click", () => { setActiveNav(navAssets); showOnly(assetsSection); });
   navExpenses.addEventListener("click", async () => {
-    showSection("expenses");
+    setActiveNav(navExpenses);
+    showOnly(expensesSection);
     setTodayIfEmpty(document.getElementById("exp_date"));
     await Promise.all([loadCOADropdowns(), loadVendors()]);
   });
@@ -324,7 +444,29 @@
     assetBtn.textContent = "Create Asset";
   });
 
-  // COA dropdowns
+  // Expenses tabs
+  const btnExpCreate = document.getElementById("btnExpCreate");
+  const btnExpRetrieve = document.getElementById("btnExpRetrieve");
+  const btnExpPending = document.getElementById("btnExpPending");
+
+  const expCreatePanel = document.getElementById("expCreatePanel");
+  const expRetrievePanel = document.getElementById("expRetrievePanel");
+  const expPendingPanel = document.getElementById("expPendingPanel");
+
+  function setExpenseTab(which) {
+    [btnExpCreate, btnExpRetrieve, btnExpPending].forEach(b => b.classList.remove("active"));
+    [expCreatePanel, expRetrievePanel, expPendingPanel].forEach(p => p.classList.add("hidden"));
+
+    if (which === "create") { btnExpCreate.classList.add("active"); expCreatePanel.classList.remove("hidden"); }
+    if (which === "retrieve") { btnExpRetrieve.classList.add("active"); expRetrievePanel.classList.remove("hidden"); }
+    if (which === "pending") { btnExpPending.classList.add("active"); expPendingPanel.classList.remove("hidden"); }
+  }
+
+  btnExpCreate.addEventListener("click", () => setExpenseTab("create"));
+  btnExpRetrieve.addEventListener("click", () => setExpenseTab("retrieve"));
+  btnExpPending.addEventListener("click", () => setExpenseTab("pending"));
+
+  // COA dropdowns (create form)
   const expAccountSelect = document.getElementById("exp_account_id");
   const paidThroughSelect = document.getElementById("exp_paid_through_account_id");
   const expAccountHint = document.getElementById("exp_account_hint");
@@ -333,31 +475,37 @@
   expAccountSelect.addEventListener("change", () => updateHint(expAccountSelect, expAccountHint));
   paidThroughSelect.addEventListener("change", () => updateHint(paidThroughSelect, paidThroughHint));
 
+  let _coaExpense = [];
+  let _coaPaid = [];
+  let _vendors = [];
+
   async function loadCOADropdowns() {
-    // Expense accounts
     const r1 = await fetch("/coa/expense-accounts");
     const d1 = await r1.json();
     if (d1.ok) {
-      fillSelect(expAccountSelect, d1.accounts, "Select expense account…");
+      _coaExpense = d1.accounts || [];
+      fillSelect(expAccountSelect, _coaExpense, "Select expense account…");
     } else {
       expAccountSelect.innerHTML = `<option value="">COA not loaded</option>`;
-      showResult(expenseResult, "error", "COA CSV not loaded on server. Check Chart_of_Accounts.csv and COA_CSV_PATH.");
     }
 
-    // Paid through accounts
     const r2 = await fetch("/coa/paid-through-accounts");
     const d2 = await r2.json();
     if (d2.ok) {
-      fillSelect(paidThroughSelect, d2.accounts, "Select paid through…");
+      _coaPaid = d2.accounts || [];
+      fillSelect(paidThroughSelect, _coaPaid, "Select paid through…");
     } else {
       paidThroughSelect.innerHTML = `<option value="">COA not loaded</option>`;
     }
 
     updateHint(expAccountSelect, expAccountHint);
     updateHint(paidThroughSelect, paidThroughHint);
+
+    // also update modal selects if open
+    fillSelect(document.getElementById("edit_account_id"), _coaExpense, "Select expense account…");
+    fillSelect(document.getElementById("edit_paid_through_account_id"), _coaPaid, "Select paid through…");
   }
 
-  // Vendors
   async function loadVendors() {
     const sel = document.getElementById("exp_vendor_id");
     sel.innerHTML = `<option value="">Loading…</option>`;
@@ -366,184 +514,142 @@
       const res = await fetch("/vendors/list?page=1&per_page=200");
       const out = await res.json();
       if (!out.ok) throw new Error("failed");
-
-      sel.innerHTML = `<option value="">No vendor</option>`;
-      (out.vendors || []).forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v.contact_id || "";
-        opt.textContent = v.contact_name || v.contact_id || "";
-        sel.appendChild(opt);
-      });
+      _vendors = out.vendors || [];
+      fillVendors(sel, _vendors);
+      fillVendors(document.getElementById("edit_vendor_id"), _vendors);
     } catch {
       sel.innerHTML = `<option value="">No vendor (failed to load)</option>`;
     }
   }
 
-  // Receipt helpers
-  const receiptFile = document.getElementById("receiptFile");
-  const expReceipt = document.getElementById("exp_receipt");
-
-  async function uploadReceipt(expenseId, file, reportNoNullable) {
-    const fd = new FormData();
-    fd.append("receipt", file);
-
-    const url = `/expenses/${encodeURIComponent(expenseId)}/receipt` +
-                (reportNoNullable ? `?report_no=${encodeURIComponent(reportNoNullable)}` : "");
-
-    const res = await fetch(url, { method: "POST", body: fd });
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch { data = { raw: text }; }
-
-    if (!res.ok) {
-      const err = data?.detail ?? data;
-      throw new Error(typeof err === "string" ? err : JSON.stringify(err, null, 2));
-    }
-    return data;
-  }
-
-  async function pickAndUploadReceipt(expenseId) {
-    receiptFile.value = "";
-    receiptFile.onchange = async () => {
-      const file = receiptFile.files && receiptFile.files[0];
-      if (!file) return;
-
-      // Fetch to ensure we get cf_expense_report for renaming
-      let reportNo = null;
-      try {
-        const r = await fetch("/expenses/by-id/" + encodeURIComponent(expenseId));
-        const d = await r.json();
-        reportNo = (d?.expense?.custom_field_hash?.cf_expense_report) || null;
-      } catch {}
-
-      await uploadReceipt(expenseId, file, reportNo);
-      showResult(expenseResult, "success", "Receipt uploaded.");
-    };
-    receiptFile.click();
-  }
-
-  function openReceipt(expenseId) {
-    window.open(`/expenses/${encodeURIComponent(expenseId)}/receipt`, "_blank");
-  }
-
-  // Expenses
+  // Create Pending Expense
   const expenseForm = document.getElementById("expenseForm");
   const expenseResult = document.getElementById("expenseResult");
   const expenseBtn = document.getElementById("expenseSubmitBtn");
-  const expenseListBtn = document.getElementById("expenseListBtn");
-  const expenseTableWrap = document.getElementById("expenseTableWrap");
-  const expenseTableBody = document.getElementById("expenseTableBody");
-  const expenseDetails = document.getElementById("expenseDetails");
 
   expenseForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     expenseBtn.disabled = true;
     expenseBtn.textContent = "Creating…";
     expenseResult.classList.add("hidden");
-    expenseDetails.classList.add("hidden");
 
     const payload = {
       date: exp_date.value,
       account_id: expAccountSelect.value,
       paid_through_account_id: paidThroughSelect.value,
       amount: Number(exp_amount.value),
+      notes: (exp_notes.value || "").trim(),
+      reference_number: (exp_reference.value || "").trim(),
     };
-    
-if (exp_description.value.trim()) payload.notes = exp_description.value.trim();
-if (exp_reference.value.trim()) payload.reference_number = exp_reference.value.trim();
     if (exp_vendor_id.value.trim()) payload.vendor_id = exp_vendor_id.value.trim();
 
     try {
-      const res = await fetch("/expenses/create", {
+      const res = await fetch("/pending-expenses/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
       const out = await res.json();
-      if (!res.ok || !out.ok) {
-        throw new Error(JSON.stringify(out?.detail || out, null, 2));
-      }
+      if (!res.ok || !out.ok) throw new Error(JSON.stringify(out?.detail || out, null, 2));
 
-      const expenseId = out.expense_id;
-      const reportNo = out.expense_report_no; // may be null if flow still processing
+      const pendingId = out.pending.id;
 
-      const file = expReceipt.files && expReceipt.files[0];
+      // Optional attachment
+      const file = exp_receipt.files && exp_receipt.files[0];
       if (file) {
-        expenseBtn.textContent = "Uploading receipt…";
-        await uploadReceipt(expenseId, file, reportNo || null);
-        showResult(expenseResult, "success",
-          reportNo
-            ? `Expense created (${reportNo}) and receipt uploaded.`
-            : `Expense created and receipt uploaded. (Report number will appear once Zoho flow completes.)`
-        );
-      } else {
-        showResult(expenseResult, "success",
-          reportNo
-            ? `Expense created successfully. Report No: ${reportNo}`
-            : `Expense created successfully. (Report number will appear once Zoho flow completes.)`
-        );
+        expenseBtn.textContent = "Uploading attachment…";
+        const fd = new FormData();
+        fd.append("file", file);
+        const r2 = await fetch(`/pending-expenses/${encodeURIComponent(pendingId)}/attachments`, { method: "POST", body: fd });
+        const d2 = await r2.json();
+        if (!r2.ok || !d2.ok) throw new Error(JSON.stringify(d2?.detail || d2, null, 2));
       }
 
+      showResult(expenseResult, "success", "Pending expense created successfully.");
       expenseForm.reset();
       setTodayIfEmpty(document.getElementById("exp_date"));
       await Promise.all([loadCOADropdowns(), loadVendors()]);
-
     } catch (err) {
       showResult(expenseResult, "error", "Failed:\n" + (err?.message || String(err)));
     }
 
     expenseBtn.disabled = false;
-    expenseBtn.textContent = "Create Expense";
+    expenseBtn.textContent = "Create Pending Expense";
   });
 
-  async function loadExpenses() {
-    expenseResult.classList.add("hidden");
-    expenseDetails.classList.add("hidden");
+  // Zoho retrieve table
+  const expenseListBtn = document.getElementById("expenseListBtn");
+  const zohoResult = document.getElementById("zohoResult");
+  const expenseTableWrap = document.getElementById("expenseTableWrap");
+  const expenseTableBody = document.getElementById("expenseTableBody");
+  const hiddenFilePicker = document.getElementById("hiddenFilePicker");
+
+  function openZohoReceipt(expenseId) {
+    window.open(`/expenses/${encodeURIComponent(expenseId)}/receipt`, "_blank");
+  }
+
+  async function attachZoho(expenseId) {
+    hiddenFilePicker.value = "";
+    hiddenFilePicker.onchange = async () => {
+      const file = hiddenFilePicker.files && hiddenFilePicker.files[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const res = await fetch(`/expenses/${encodeURIComponent(expenseId)}/attachment`, { method: "POST", body: fd });
+      const out = await res.json();
+      if (!res.ok || !out.ok) throw new Error(JSON.stringify(out?.detail || out, null, 2));
+
+      showResult(zohoResult, "success", "Attachment added (did not replace receipt).");
+    };
+    hiddenFilePicker.click();
+  }
+
+  async function loadZohoExpenses() {
+    zohoResult.classList.add("hidden");
     expenseTableWrap.classList.add("hidden");
     expenseTableBody.innerHTML = "";
 
-    const searchText = document.getElementById("expenseSearchText").value.trim();
-    const filterBy = document.getElementById("expenseFilterBy").value;
-
-    const params = new URLSearchParams();
-    params.set("page", "1");
-    params.set("per_page", "50");
-    params.set("filter_by", filterBy);
-    if (searchText) params.set("search_text", searchText);
+    const from = document.getElementById("zoho_from").value || null;
+    const to = document.getElementById("zoho_to").value || null;
 
     try {
-      const res = await fetch("/expenses/list?" + params.toString());
+      const res = await fetch(`/expenses/list?page=1&per_page=50&filter_by=Status.All`);
       const out = await res.json();
       if (!out.ok) throw new Error("Zoho error");
 
-      const list = out.data.expenses || [];
+      let list = out.data.expenses || [];
+
+      // Client-side date filter on returned page
+      if (from) list = list.filter(x => (x.date || "") >= from);
+      if (to) list = list.filter(x => (x.date || "") <= to);
+
       if (!list.length) {
-        showResult(expenseResult, "", "No expenses found for the selected filter.");
+        showResult(zohoResult, "", "No expenses found for the selected date range (page 1).");
         return;
       }
 
       list.forEach((x) => {
         const tr = document.createElement("tr");
-
         const date = x.date || "";
         const amt = (x.total || x.amount || "") + (x.currency_code ? (" " + x.currency_code) : "");
-        const status = x.status || "";
-        const desc = x.description || "";
+        const vendor = x.vendor_name || x.customer_name || "";
+        const reference = x.reference_number || "";
+
         const id = x.expense_id || "";
 
         tr.innerHTML = `
           <td>${escapeHtml(date)}</td>
           <td>${escapeHtml(String(amt))}</td>
-          <td>${escapeHtml(status)}</td>
-          <td>${escapeHtml(desc)}</td>
-          <td class="mono">${escapeHtml(id)}</td>
+          <td>${escapeHtml(String(vendor))}</td>
+          <td>${escapeHtml(String(reference))}</td>
           <td class="btnCell">
-            <button class="btnSmall secondary" data-action="upload" data-id="${escapeHtml(id)}">Attach</button>
+            <button class="btnSmall secondary" data-action="attach" data-id="${escapeHtml(id)}">Attach</button>
             <button class="btnSmall" data-action="open" data-id="${escapeHtml(id)}">Open</button>
           </td>
           <td class="btnCell">
-            <button class="btnSmall" data-action="details" data-id="${escapeHtml(id)}">View</button>
+            <button class="btnSmall" data-action="editZoho" data-id="${escapeHtml(id)}">View/Edit</button>
           </td>
         `;
 
@@ -553,11 +659,11 @@ if (exp_reference.value.trim()) payload.reference_number = exp_reference.value.t
 
           btn.addEventListener("click", async () => {
             try {
-              if (action === "details") return viewExpense(eid);
-              if (action === "open") return openReceipt(eid);
-              if (action === "upload") return pickAndUploadReceipt(eid);
+              if (action === "open") return openZohoReceipt(eid);
+              if (action === "attach") return attachZoho(eid);
+              if (action === "editZoho") return openEditModal("zoho", eid);
             } catch (err) {
-              showResult(expenseResult, "error", "Failed:\n" + (err?.message || String(err)));
+              showResult(zohoResult, "error", "Failed:\n" + (err?.message || String(err)));
             }
           });
         });
@@ -567,23 +673,232 @@ if (exp_reference.value.trim()) payload.reference_number = exp_reference.value.t
 
       expenseTableWrap.classList.remove("hidden");
     } catch {
-      showResult(expenseResult, "error", "Failed to load expenses.");
+      showResult(zohoResult, "error", "Failed to load Zoho expenses.");
     }
   }
 
-  expenseListBtn.addEventListener("click", loadExpenses);
+  expenseListBtn.addEventListener("click", loadZohoExpenses);
 
-  async function viewExpense(expenseId) {
-    expenseDetails.classList.add("hidden");
-    const res = await fetch("/expenses/by-id/" + encodeURIComponent(expenseId));
-    const data = await res.json();
-    expenseDetails.textContent = JSON.stringify(data, null, 2);
-    expenseDetails.classList.remove("hidden");
+  // Pending table
+  const pendingListBtn = document.getElementById("pendingListBtn");
+  const pendingResult = document.getElementById("pendingResult");
+  const pendingTableWrap = document.getElementById("pendingTableWrap");
+  const pendingTableBody = document.getElementById("pendingTableBody");
+
+  async function attachPending(pendingId) {
+    hiddenFilePicker.value = "";
+    hiddenFilePicker.onchange = async () => {
+      const file = hiddenFilePicker.files && hiddenFilePicker.files[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const res = await fetch(`/pending-expenses/${encodeURIComponent(pendingId)}/attachments`, { method: "POST", body: fd });
+      const out = await res.json();
+      if (!res.ok || !out.ok) throw new Error(JSON.stringify(out?.detail || out, null, 2));
+
+      showResult(pendingResult, "success", "Attachment added to pending expense.");
+      await loadPending();
+    };
+    hiddenFilePicker.click();
   }
+
+  async function openPendingLatest(pendingId) {
+    const res = await fetch(`/pending-expenses/by-id/${encodeURIComponent(pendingId)}`);
+    const out = await res.json();
+    const atts = out.attachments || [];
+    if (!atts.length) {
+      showResult(pendingResult, "", "No attachments found for this pending expense.");
+      return;
+    }
+    const latest = atts[0];
+    window.open(`/pending-expenses/${encodeURIComponent(pendingId)}/attachments/${encodeURIComponent(latest.id)}`, "_blank");
+  }
+
+  async function loadPending() {
+    pendingResult.classList.add("hidden");
+    pendingTableWrap.classList.add("hidden");
+    pendingTableBody.innerHTML = "";
+
+    const from = document.getElementById("pending_from").value || "";
+    const to = document.getElementById("pending_to").value || "";
+
+    const qs = new URLSearchParams();
+    qs.set("status", "PENDING");
+    if (from) qs.set("date_from", from);
+    if (to) qs.set("date_to", to);
+
+    try {
+      const res = await fetch(`/pending-expenses/list?` + qs.toString());
+      const out = await res.json();
+      if (!out.ok) throw new Error("pending error");
+
+      const list = out.pending || [];
+      if (!list.length) {
+        showResult(pendingResult, "", "No pending expenses found.");
+        return;
+      }
+
+      list.forEach((x) => {
+        const tr = document.createElement("tr");
+        const date = x.date || "";
+        const amt = x.amount || "";
+        const vendor = x.vendor_id || "";
+        const reference = x.reference_number || "";
+        const id = x.id || "";
+
+        tr.innerHTML = `
+          <td>${escapeHtml(date)}</td>
+          <td>${escapeHtml(String(amt))}</td>
+          <td>${escapeHtml(String(vendor))}</td>
+          <td>${escapeHtml(String(reference))}</td>
+          <td class="btnCell">
+            <button class="btnSmall secondary" data-action="attach" data-id="${escapeHtml(id)}">Attach</button>
+            <button class="btnSmall" data-action="open" data-id="${escapeHtml(id)}">Open</button>
+          </td>
+          <td class="btnCell">
+            <button class="btnSmall" data-action="editPending" data-id="${escapeHtml(id)}">View/Edit</button>
+          </td>
+        `;
+
+        tr.querySelectorAll("button").forEach(btn => {
+          const action = btn.getAttribute("data-action");
+          const eid = btn.getAttribute("data-id");
+
+          btn.addEventListener("click", async () => {
+            try {
+              if (action === "attach") return attachPending(eid);
+              if (action === "open") return openPendingLatest(eid);
+              if (action === "editPending") return openEditModal("pending", eid);
+            } catch (err) {
+              showResult(pendingResult, "error", "Failed:\n" + (err?.message || String(err)));
+            }
+          });
+        });
+
+        pendingTableBody.appendChild(tr);
+      });
+
+      pendingTableWrap.classList.remove("hidden");
+    } catch {
+      showResult(pendingResult, "error", "Failed to load pending expenses.");
+    }
+  }
+
+  pendingListBtn.addEventListener("click", loadPending);
+
+  // Edit Modal
+  const editModal = document.getElementById("editModal");
+  const editClose = document.getElementById("editClose");
+  const editSave = document.getElementById("editSave");
+  const editResult = document.getElementById("editResult");
+  const editMeta = document.getElementById("editMeta");
+
+  let _editMode = null; // "zoho" | "pending"
+  let _editId = null;
+
+  function openModal() { editModal.classList.remove("hidden"); }
+  function closeModal() { editModal.classList.add("hidden"); editResult.classList.add("hidden"); }
+
+  editClose.addEventListener("click", closeModal);
+
+  async function openEditModal(mode, id) {
+    _editMode = mode;
+    _editId = id;
+    editResult.classList.add("hidden");
+
+    // Ensure dropdowns exist
+    fillSelect(document.getElementById("edit_account_id"), _coaExpense, "Select expense account…");
+    fillSelect(document.getElementById("edit_paid_through_account_id"), _coaPaid, "Select paid through…");
+    fillVendors(document.getElementById("edit_vendor_id"), _vendors);
+
+    if (mode === "zoho") {
+      editMeta.textContent = "Zoho Expense ID: " + id;
+      const res = await fetch("/expenses/by-id/" + encodeURIComponent(id));
+      const data = await res.json();
+      const e = data.expense || {};
+
+      document.getElementById("edit_date").value = e.date || "";
+      document.getElementById("edit_amount").value = e.amount || e.total || "";
+      document.getElementById("edit_account_id").value = e.account_id || "";
+      document.getElementById("edit_paid_through_account_id").value = e.paid_through_account_id || "";
+      document.getElementById("edit_vendor_id").value = e.vendor_id || "";
+      document.getElementById("edit_reference").value = e.reference_number || "";
+      document.getElementById("edit_notes").value = e.description || "";
+    } else {
+      editMeta.textContent = "Pending ID: " + id;
+      const res = await fetch("/pending-expenses/by-id/" + encodeURIComponent(id));
+      const data = await res.json();
+      const e = data.pending || {};
+
+      document.getElementById("edit_date").value = e.date || "";
+      document.getElementById("edit_amount").value = e.amount || "";
+      document.getElementById("edit_account_id").value = e.account_id || "";
+      document.getElementById("edit_paid_through_account_id").value = e.paid_through_account_id || "";
+      document.getElementById("edit_vendor_id").value = e.vendor_id || "";
+      document.getElementById("edit_reference").value = e.reference_number || "";
+      document.getElementById("edit_notes").value = e.notes || "";
+    }
+
+    openModal();
+  }
+
+  editSave.addEventListener("click", async () => {
+    editSave.disabled = true;
+    editSave.textContent = "Saving…";
+    editResult.classList.add("hidden");
+
+    const payload = {
+      date: document.getElementById("edit_date").value,
+      amount: Number(document.getElementById("edit_amount").value),
+      account_id: document.getElementById("edit_account_id").value,
+      paid_through_account_id: document.getElementById("edit_paid_through_account_id").value,
+      vendor_id: document.getElementById("edit_vendor_id").value,
+      reference_number: document.getElementById("edit_reference").value.trim(),
+      notes: document.getElementById("edit_notes").value.trim(),
+    };
+
+    try {
+      let res, out;
+      if (_editMode === "zoho") {
+        res = await fetch("/expenses/update/" + encodeURIComponent(_editId), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        out = await res.json();
+      } else {
+        res = await fetch("/pending-expenses/update/" + encodeURIComponent(_editId), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        out = await res.json();
+      }
+
+      if (!res.ok || !out.ok) throw new Error(JSON.stringify(out?.detail || out, null, 2));
+      showResult(editResult, "success", "Saved successfully.");
+
+      // refresh tables if visible
+      if (_editMode === "zoho") await loadZohoExpenses();
+      if (_editMode === "pending") await loadPending();
+
+    } catch (err) {
+      showResult(editResult, "error", "Failed:\n" + (err?.message || String(err)));
+    }
+
+    editSave.disabled = false;
+    editSave.textContent = "Save Changes";
+  });
 
   // Defaults
   setTodayIfEmpty(document.getElementById("purchase_date"));
   setTodayIfEmpty(document.getElementById("depreciation_start_date"));
+  setTodayIfEmpty(document.getElementById("exp_date"));
+
+  // Start blank
+  showOnly(homeSection);
 </script>
 
 </body>
