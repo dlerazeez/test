@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Assets & Expenses</title>
-  <link rel="stylesheet" href="/static/style.css?v=3">
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 
@@ -14,49 +14,63 @@
     <!-- ASSETS SECTION -->
     <section id="assetsSection" class="section">
       <div class="card">
-        <h1>Create Fixed Asset</h1>
-        <div class="subtitle">Draft asset will be created in Zoho Books</div>
+
+        <div class="cardHeader">
+          <div>
+            <h1>Create Fixed Asset</h1>
+            <div class="subtitle">Draft asset will be created in Zoho Books</div>
+          </div>
+          <div class="badge">Assets</div>
+        </div>
+
+        <div class="hr"></div>
 
         <form id="assetForm">
-          <div class="field">
-            <label>Asset Name</label>
-            <input id="asset_name" required>
+          <div class="formGrid">
+
+            <div class="field full">
+              <label>Asset Name</label>
+              <input id="asset_name" required>
+            </div>
+
+            <div class="field">
+              <label>Asset Category</label>
+              <select id="asset_category" required>
+                <option value="COMPUTERS">Computers & Electronics</option>
+                <option value="FURNITURE">Furniture & Equipment</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Purchase Cost</label>
+              <input type="number" id="asset_cost" required>
+            </div>
+
+            <div class="field">
+              <label>Purchase Date</label>
+              <input type="date" id="purchase_date" required>
+            </div>
+
+            <div class="field">
+              <label>Depreciation Start Date</label>
+              <input type="date" id="depreciation_start_date" required>
+            </div>
+
+            <div class="field">
+              <label>Useful Life (Months)</label>
+              <input type="number" id="useful_life_months" required>
+            </div>
+
+            <div class="field full">
+              <label>Salvage Value</label>
+              <input type="number" id="salvage_value" value="0">
+            </div>
+
           </div>
 
-          <div class="field">
-            <label>Asset Category</label>
-            <select id="asset_category" required>
-              <option value="COMPUTERS">Computers & Electronics</option>
-              <option value="FURNITURE">Furniture & Equipment</option>
-            </select>
+          <div class="actions">
+            <button id="assetSubmitBtn" class="primary" type="submit">Create Asset</button>
           </div>
-
-          <div class="field">
-            <label>Purchase Cost</label>
-            <input type="number" id="asset_cost" required>
-          </div>
-
-          <div class="field">
-            <label>Purchase Date</label>
-            <input type="date" id="purchase_date" required>
-          </div>
-
-          <div class="field">
-            <label>Depreciation Start Date</label>
-            <input type="date" id="depreciation_start_date" required>
-          </div>
-
-          <div class="field">
-            <label>Useful Life (Months)</label>
-            <input type="number" id="useful_life_months" required>
-          </div>
-
-          <div class="field">
-            <label>Salvage Value</label>
-            <input type="number" id="salvage_value" value="0">
-          </div>
-
-          <button id="assetSubmitBtn" type="submit">Create Asset</button>
         </form>
 
         <div id="assetResult" class="result"></div>
@@ -66,67 +80,81 @@
     <!-- EXPENSES SECTION -->
     <section id="expensesSection" class="section hidden">
       <div class="card">
-        <h1>Create Expense</h1>
-        <div class="subtitle">Expense will be created in Zoho Books</div>
+
+        <div class="cardHeader">
+          <div>
+            <h1>Create Expense</h1>
+            <div class="subtitle">Expense will be created in Zoho Books</div>
+          </div>
+          <div class="badge">Expenses</div>
+        </div>
+
+        <div class="hr"></div>
 
         <form id="expenseForm">
-          <div class="field">
-            <label>Date</label>
-            <input type="date" id="exp_date" required>
+          <div class="formGrid">
+
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="exp_date" required>
+            </div>
+
+            <div class="field">
+              <label>Amount</label>
+              <input type="number" step="0.01" id="exp_amount" required>
+            </div>
+
+            <div class="field">
+              <label>Expense Account</label>
+              <select id="exp_account_id" required>
+                <option value="">Select expense account</option>
+                <option value="5571826000000361045">501 — OTA Monthly Usage Fee</option>
+                <option value="5571826000000000427">502 — IT and Internet Expenses</option>
+                <option value="5571826000000545567">503 — Ticket Void Penalty</option>
+                <option value="5571826000000864577">504 — Telecommunications Expense</option>
+                <option value="5571826000000000409">505 — Bank Fees and Charges</option>
+                <option value="5571826000000000445">520 — Salaries and related charges</option>
+                <option value="5571826000000864999">531 — Credit Card Charges</option>
+                <option value="5571826000000000451">540 — Depreciation Expense</option>
+                <option value="5571826000000864569">541 — Amortization Expense</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Paid Through</label>
+              <select id="exp_paid_through_account_id" required>
+                <option value="">Select paid through</option>
+                <option value="5571826000000164424">104 — Wings Corporate FIB</option>
+                <option value="5571826000000000358">101 — Petty Cash</option>
+                <option value="5571826000000000361">102 — Cash Vault - A</option>
+                <option value="5571826000000506003">103 — Cash Vault - B</option>
+                <option value="5571826000000908003">105 — Cash Valut - C</option>
+                <option value="5571826000001165272">106 — Cash Vault - L</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <label>Description</label>
+              <input id="exp_description" placeholder="Optional">
+            </div>
+
+            <div class="field full">
+              <label>Reference Number</label>
+              <input id="exp_reference_number" placeholder="Optional">
+            </div>
+
+            <div class="field full">
+              <label>Vendor</label>
+              <select id="exp_vendor_id">
+                <option value="">No vendor</option>
+              </select>
+            </div>
+
           </div>
 
-          <div class="field">
-            <label>Expense Account</label>
-            <select id="exp_account_id" required>
-              <option value="">Select expense account</option>
-              <option value="5571826000000361045">501 — OTA Monthly Usage Fee</option>
-              <option value="5571826000000000427">502 — IT and Internet Expenses</option>
-              <option value="5571826000000545567">503 — Ticket Void Penalty</option>
-              <option value="5571826000000864577">504 — Telecommunications Expense</option>
-              <option value="5571826000000000409">505 — Bank Fees and Charges</option>
-              <option value="5571826000000000445">520 — Salaries and related charges</option>
-              <option value="5571826000000864999">531 — Credit Card Charges</option>
-              <option value="5571826000000000451">540 — Depreciation Expense</option>
-              <option value="5571826000000864569">541 — Amortization Expense</option>
-            </select>
+          <div class="actions">
+            <button id="expenseSubmitBtn" class="primary" type="submit">Create Expense</button>
           </div>
-
-          <div class="field">
-            <label>Paid Through</label>
-            <select id="exp_paid_through_account_id" required>
-              <option value="">Select paid through</option>
-              <option value="5571826000000164424">104 — Wings Corporate FIB</option>
-              <option value="5571826000000000358">101 — Petty Cash</option>
-              <option value="5571826000000000361">102 — Cash Vault - A</option>
-              <option value="5571826000000506003">103 — Cash Vault - B</option>
-              <option value="5571826000000908003">105 — Cash Valut - C</option>
-              <option value="5571826000001165272">106 — Cash Vault - L</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>Amount</label>
-            <input type="number" step="0.01" id="exp_amount" required>
-          </div>
-
-          <div class="field">
-            <label>Description</label>
-            <input id="exp_description" placeholder="Optional">
-          </div>
-
-          <div class="field">
-            <label>Reference Number</label>
-            <input id="exp_reference_number" placeholder="Optional">
-          </div>
-
-          <div class="field">
-            <label>Vendor</label>
-            <select id="exp_vendor_id">
-              <option value="">No vendor</option>
-            </select>
-          </div>
-
-          <button id="expenseSubmitBtn" type="submit">Create Expense</button>
         </form>
 
         <div class="row">
@@ -140,8 +168,6 @@
           </select>
         </div>
 
-        <input type="file" id="receiptFile" class="hidden" accept="image/*,application/pdf">
-
         <div id="expenseResult" class="result"></div>
 
         <div id="expenseTableWrap" class="tableWrap hidden">
@@ -154,7 +180,7 @@
                 <th>Description</th>
                 <th>Expense ID</th>
                 <th>Receipt</th>
-                <th></th>
+                <th>Details</th>
               </tr>
             </thead>
             <tbody id="expenseTableBody"></tbody>
@@ -162,6 +188,10 @@
         </div>
 
         <pre id="expenseDetails" class="details hidden"></pre>
+
+        <!-- Hidden file input for receipt upload -->
+        <input type="file" id="receiptFile" class="hidden" accept="image/*,application/pdf">
+
       </div>
     </section>
 
@@ -370,6 +400,56 @@
   });
 
   // ----------------------------
+  // Receipts (Attach/Upload + Open)
+  // ----------------------------
+  const receiptFile = document.getElementById("receiptFile");
+
+  async function pickAndUploadReceipt(expenseId) {
+    receiptFile.value = "";
+    receiptFile.onchange = async () => {
+      const file = receiptFile.files && receiptFile.files[0];
+      if (!file) return;
+      await uploadReceipt(expenseId, file);
+    };
+    receiptFile.click();
+  }
+
+  async function uploadReceipt(expenseId, file) {
+    expenseResult.style.display = "none";
+
+    const fd = new FormData();
+    fd.append("receipt", file);
+
+    try {
+      const res = await fetch(`/expenses/${encodeURIComponent(expenseId)}/receipt`, {
+        method: "POST",
+        body: fd
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+      if (!res.ok) {
+        const err = data?.detail ?? data;
+        throw new Error(typeof err === "string" ? err : JSON.stringify(err, null, 2));
+      }
+
+      expenseResult.className = "result success";
+      expenseResult.textContent = "Receipt uploaded successfully.";
+      expenseResult.style.display = "block";
+    } catch (err) {
+      expenseResult.className = "result error";
+      expenseResult.textContent = "Failed to upload receipt:\n" + (err?.message || String(err));
+      expenseResult.style.display = "block";
+    }
+  }
+
+  function openReceipt(expenseId) {
+    window.open(`/expenses/${encodeURIComponent(expenseId)}/receipt`, "_blank");
+  }
+
+  // ----------------------------
   // List expenses + render table
   // ----------------------------
   async function loadExpenses() {
@@ -416,11 +496,24 @@
           <td>${escapeHtml(status)}</td>
           <td>${escapeHtml(desc)}</td>
           <td class="mono">${escapeHtml(id)}</td>
-          <td><button class="tiny" data-id="${escapeHtml(id)}">View</button></td>
+          <td class="btnCell">
+            <button class="btnSmall secondary" data-action="upload" data-id="${escapeHtml(id)}">Attach</button>
+            <button class="btnSmall" data-action="open" data-id="${escapeHtml(id)}">Open</button>
+          </td>
+          <td class="btnCell">
+            <button class="btnSmall" data-action="details" data-id="${escapeHtml(id)}">View</button>
+          </td>
         `;
 
-        tr.querySelector("button").addEventListener("click", async () => {
-          await viewExpense(id);
+        tr.querySelectorAll("button").forEach(btn => {
+          const action = btn.getAttribute("data-action");
+          const eid = btn.getAttribute("data-id");
+
+          btn.addEventListener("click", async () => {
+            if (action === "details") return viewExpense(eid);
+            if (action === "open") return openReceipt(eid);
+            if (action === "upload") return pickAndUploadReceipt(eid);
+          });
         });
 
         expenseTableBody.appendChild(tr);
@@ -453,7 +546,7 @@
     }
   }
 
-  // Default today on first load (Assets screen open)
+  // Default dates on initial load
   setTodayIfEmpty(document.getElementById("purchase_date"));
   setTodayIfEmpty(document.getElementById("depreciation_start_date"));
 </script>
