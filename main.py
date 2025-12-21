@@ -25,7 +25,8 @@ ZOHO_REFRESH_TOKEN = os.getenv("ZOHO_REFRESH_TOKEN")
 EXPENSE_CF_API_NAME = "cf_expense_report"
 
 # Chart of Accounts CSV (local source for dropdowns)
-COA_CSV_PATH = os.getenv("COA_CSV_PATH", "Chart_of_Accounts.csv")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+COA_CSV_PATH = os.getenv("COA_CSV_PATH", os.path.join(BASE_DIR, "Chart_of_Accounts.csv"))
 
 if not all([ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN]):
     raise RuntimeError("Missing Zoho OAuth environment variables (ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET/ZOHO_REFRESH_TOKEN)")
