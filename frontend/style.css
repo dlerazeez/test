@@ -22,9 +22,7 @@
 
 * { box-sizing: border-box; }
 
-html, body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
   margin: 0;
@@ -35,9 +33,7 @@ body {
 
 .hidden { display: none !important; }
 
-/* -----------------------------
-   Layout
-------------------------------*/
+/* Layout */
 .layout {
   min-height: 100vh;
   display: flex;
@@ -60,9 +56,7 @@ body {
 }
 
 @media (max-width: 980px) {
-  .layout {
-    flex-direction: column;
-  }
+  .layout { flex-direction: column; }
   .sidebar {
     position: static;
     width: 100%;
@@ -70,9 +64,7 @@ body {
   }
 }
 
-/* -----------------------------
-   Card
-------------------------------*/
+/* Card */
 .card {
   width: 100%;
   max-width: 980px;
@@ -118,16 +110,10 @@ h1 {
   margin: 16px 0 18px 0;
 }
 
-/* -----------------------------
-   Sections
-------------------------------*/
-.section {
-  padding: 0;
-}
+/* Sections */
+.section { padding: 0; }
 
-/* -----------------------------
-   Forms
-------------------------------*/
+/* Forms */
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -135,9 +121,7 @@ h1 {
 }
 
 @media (max-width: 780px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
+  .formGrid { grid-template-columns: 1fr; }
 }
 
 .field {
@@ -146,17 +130,14 @@ h1 {
   gap: 6px;
 }
 
-.field.full {
-  grid-column: 1 / -1;
-}
+.field.full { grid-column: 1 / -1; }
 
 label {
   font-size: 13px;
   font-weight: 600;
 }
 
-input,
-select {
+input, select {
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
@@ -166,27 +147,17 @@ select {
   color: var(--text);
 }
 
-input:focus,
-select:focus {
+input:focus, select:focus {
   outline: none;
   border-color: var(--primary);
 }
 
-input::placeholder {
-  color: #9ca3af;
-}
+input::placeholder { color: #9ca3af; }
 
-/* File input consistency */
-input[type="file"] {
-  padding: 10px 12px;
-}
+input[type="file"] { padding: 10px 12px; }
 
-/* -----------------------------
-   Buttons
-------------------------------*/
-.actions {
-  margin-top: 14px;
-}
+/* Buttons */
+.actions { margin-top: 14px; }
 
 button {
   border: none;
@@ -228,9 +199,7 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-/* -----------------------------
-   Result messages
-------------------------------*/
+/* Results */
 .result {
   margin-top: 16px;
   padding: 12px;
@@ -253,9 +222,7 @@ button:disabled {
   border-color: rgba(127, 29, 29, 0.25);
 }
 
-/* -----------------------------
-   Row controls (list expenses)
-------------------------------*/
+/* Row controls */
 .row {
   margin-top: 16px;
   display: flex;
@@ -282,9 +249,7 @@ button:disabled {
   background: #fff;
 }
 
-/* -----------------------------
-   Table
-------------------------------*/
+/* Table */
 .tableWrap {
   margin-top: 14px;
   border: 1px solid var(--border);
@@ -313,18 +278,14 @@ button:disabled {
   vertical-align: top;
 }
 
-.table tbody tr:last-child td {
-  border-bottom: none;
-}
+.table tbody tr:last-child td { border-bottom: none; }
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
 }
 
-/* -----------------------------
-   Details block
-------------------------------*/
+/* Details block */
 .details {
   margin-top: 14px;
   padding: 12px;
@@ -338,9 +299,7 @@ button:disabled {
   line-height: 1.5;
 }
 
-/* -----------------------------
-   Sidebar
-------------------------------*/
+/* Sidebar */
 .sidebarCard {
   background: var(--card);
   border: 1px solid var(--border);
@@ -370,9 +329,7 @@ button:disabled {
   font-weight: 800;
 }
 
-.navBtn:last-child {
-  margin-bottom: 0;
-}
+.navBtn:last-child { margin-bottom: 0; }
 
 .navBtn.active {
   border-color: rgba(17, 24, 39, 0.45);
