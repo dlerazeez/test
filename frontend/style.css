@@ -185,6 +185,7 @@ button.tiny {
   display: none;
   border: 1px solid var(--border);
   background: #fff;
+  white-space: pre-wrap;
 }
 
 .result.success {
