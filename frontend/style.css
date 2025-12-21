@@ -77,7 +77,12 @@ body {
   border-color: var(--primary);
 }
 
-.section { width: 100%; display: flex; justify-content: center; }
+.section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .hidden { display: none !important; }
 
 .card {
