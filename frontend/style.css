@@ -21,7 +21,6 @@
 }
 
 * { box-sizing: border-box; }
-
 html, body { height: 100%; }
 
 body {
@@ -42,17 +41,17 @@ body {
   padding: 18px;
 }
 
-.content {
-  flex: 1;
-  min-width: 0;
-}
-
 .sidebar {
   width: 260px;
   flex: 0 0 260px;
   position: sticky;
   top: 18px;
   align-self: flex-start;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
 }
 
 @media (max-width: 980px) {
@@ -62,6 +61,14 @@ body {
     width: 100%;
     flex: 1 1 auto;
   }
+}
+
+/* Blank home area */
+.blank {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  min-height: 320px;
 }
 
 /* Card */
@@ -153,7 +160,6 @@ input:focus, select:focus {
 }
 
 input::placeholder { color: #9ca3af; }
-
 input[type="file"] { padding: 10px 12px; }
 
 .hint {
@@ -175,10 +181,7 @@ button {
   transition: opacity 120ms ease;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .primary {
   width: 100%;
@@ -230,30 +233,14 @@ button:disabled {
 
 /* Row controls */
 .row {
-  margin-top: 16px;
+  margin-top: 8px;
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
 }
 
-.inlineInput {
-  flex: 1;
-  min-width: 220px;
-  padding: 10px 12px;
-  font-size: 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.inlineSelect {
-  min-width: 190px;
-  padding: 10px 12px;
-  font-size: 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-}
+.inlineField { min-width: 180px; }
 
 /* Table */
 .tableWrap {
@@ -285,25 +272,6 @@ button:disabled {
 }
 
 .table tbody tr:last-child td { border-bottom: none; }
-
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-}
-
-/* Details block */
-.details {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #0b1220;
-  color: #e5e7eb;
-  overflow: auto;
-  max-height: 420px;
-  font-size: 12px;
-  line-height: 1.5;
-}
 
 /* Sidebar */
 .sidebarCard {
@@ -340,4 +308,70 @@ button:disabled {
 .navBtn.active {
   border-color: rgba(17, 24, 39, 0.45);
   background: var(--secondaryBg);
+}
+
+/* Tabs inside Expenses */
+.moduleTabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.tabBtn {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tabBtn.active {
+  border-color: rgba(17, 24, 39, 0.45);
+  background: var(--secondaryBg);
+}
+
+.panel { padding-top: 6px; }
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 1000;
+}
+
+.modalCard {
+  width: 100%;
+  max-width: 860px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  padding: 18px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modalTitle {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.modalSub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
 }
