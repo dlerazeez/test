@@ -458,3 +458,43 @@ def delete_employee(employee_id: str):
     if data.get("code") != 0:
         raise HTTPException(400, data)
     return {"ok": True, "data": data}
+
+# -------------------------------------------------
+# Vendor List
+# -------------------------------------------------
+
+@app.get("/vendors/list")
+def list_vendors(search_text: str = "", page: int = 1, per_page: int = 200):
+    params = {
+        "organization_id": ZOHO_ORG_ID,
+        "page": page,
+        "per_page": per_page,
+    }
+    if search_text.strip():
+        params["search_text"] = search_text.strip()
+
+    # Zoho Books returns contacts; we'll filter to vendors in code to be safe
+    resp = requests.get(
+        f"{ZOHO_BASE}/contacts",
+        params=params,
+        headers={"Authorization": f"Zoho-oauthtoken {get_access_token()}"},
+        timeout=30,
+    )
+
+    data = resp.json()
+    if data.get("code") != 0:
+        raise HTTPException(status_code=400, detail=data)
+
+    contacts = data.get("contacts", [])
+
+    vendors = []
+    for c in contacts:
+        # Zoho contact has contact_type / contact_type_formatted depending on org/settings
+        t = (c.get("contact_type") or c.get("contact_type_formatted") or "").lower()
+        if "vendor" in t:
+            vendors.append({
+                "vendor_id": c.get("contact_id"),
+                "vendor_name": c.get("contact_name"),
+            })
+
+    return {"ok": True, "count": len(vendors), "vendors": vendors}
