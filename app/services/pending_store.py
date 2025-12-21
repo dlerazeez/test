@@ -1,196 +1,144 @@
+import os
 import sqlite3
-import uuid
-from pathlib import Path
-from datetime import datetime
-
-from app.core.config import PENDING_DB_PATH, PENDING_UPLOADS_DIR
+import time
+from dataclasses import asdict
 
 
-def _utc_now() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+class PendingStore:
+    def __init__(self, db_path: str, storage_dir: str):
+        self.db_path = db_path
+        self.storage_dir = storage_dir
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        self._init_db()
 
+    def _connect(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
 
-def init_db():
-    PENDING_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PENDING_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    def _init_db(self):
+        with self._connect() as con:
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pending_expenses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    account_id TEXT NOT NULL,
+                    paid_through_account_id TEXT NOT NULL,
+                    notes TEXT,
+                    vendor_id TEXT,
+                    vendor_name TEXT,
+                    reference TEXT,
+                    status TEXT NOT NULL DEFAULT 'PENDING',
+                    zoho_expense_id TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+            """)
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pending_attachments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pending_id INTEGER NOT NULL,
+                    original_name TEXT,
+                    stored_name TEXT NOT NULL,
+                    stored_path TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY (pending_id) REFERENCES pending_expenses(id)
+                )
+            """)
 
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.execute("""
-        CREATE TABLE IF NOT EXISTS pending_expenses (
-            id TEXT PRIMARY KEY,
-            date TEXT NOT NULL,
-            account_id TEXT NOT NULL,
-            paid_through_account_id TEXT NOT NULL,
-            amount REAL NOT NULL,
-            vendor_id TEXT,
-            notes TEXT,
-            reference_number TEXT,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-        """)
-        con.execute("""
-        CREATE TABLE IF NOT EXISTS pending_attachments (
-            id TEXT PRIMARY KEY,
-            expense_id TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            content_type TEXT,
-            stored_path TEXT NOT NULL,
-            uploaded_at TEXT NOT NULL,
-            FOREIGN KEY(expense_id) REFERENCES pending_expenses(id)
-        )
-        """)
-        con.commit()
+    def create_pending(self, payload: dict) -> dict:
+        now = int(time.time())
+        with self._connect() as con:
+            cur = con.execute("""
+                INSERT INTO pending_expenses
+                (date, amount, account_id, paid_through_account_id, notes, vendor_id, vendor_name, reference, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+            """, (
+                payload["date"],
+                float(payload["amount"]),
+                str(payload["account_id"]),
+                str(payload["paid_through_account_id"]),
+                payload.get("notes"),
+                payload.get("vendor_id"),
+                payload.get("vendor_name"),
+                payload.get("reference"),
+                now,
+                now
+            ))
+            pid = cur.lastrowid
+        return self.get_pending(pid)
 
+    def list_pending(self, date_from: str | None = None, date_to: str | None = None) -> list[dict]:
+        where = ["status = 'PENDING'"]
+        args = []
+        if date_from:
+            where.append("date >= ?")
+            args.append(date_from)
+        if date_to:
+            where.append("date <= ?")
+            args.append(date_to)
 
-init_db()
+        q = "SELECT * FROM pending_expenses WHERE " + " AND ".join(where) + " ORDER BY date DESC, id DESC"
+        with self._connect() as con:
+            rows = con.execute(q, args).fetchall()
+        return [dict(r) for r in rows]
 
+    def get_pending(self, pending_id: int) -> dict:
+        with self._connect() as con:
+            row = con.execute("SELECT * FROM pending_expenses WHERE id = ?", (pending_id,)).fetchone()
+        if not row:
+            raise KeyError("pending_not_found")
+        return dict(row)
 
-def create_pending_expense(payload: dict) -> dict:
-    exp_id = str(uuid.uuid4())
-    now = _utc_now()
+    def update_pending(self, pending_id: int, payload: dict) -> dict:
+        now = int(time.time())
+        fields = []
+        args = []
+        for k in ["date", "amount", "account_id", "paid_through_account_id", "notes", "vendor_id", "vendor_name", "reference"]:
+            if k in payload:
+                fields.append(f"{k} = ?")
+                args.append(payload[k])
+        fields.append("updated_at = ?")
+        args.append(now)
+        args.append(pending_id)
 
-    row = {
-        "id": exp_id,
-        "date": payload["date"],
-        "account_id": str(payload["account_id"]).strip(),
-        "paid_through_account_id": str(payload["paid_through_account_id"]).strip(),
-        "amount": float(payload["amount"]),
-        "vendor_id": (str(payload["vendor_id"]).strip() if payload.get("vendor_id") else None),
-        "notes": (payload.get("notes") or "").strip() or None,
-        "reference_number": (payload.get("reference_number") or "").strip() or None,
-        "status": "PENDING",
-        "created_at": now,
-        "updated_at": now,
-    }
+        with self._connect() as con:
+            con.execute(f"UPDATE pending_expenses SET {', '.join(fields)} WHERE id = ?", args)
+        return self.get_pending(pending_id)
 
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.execute(
-            """INSERT INTO pending_expenses
-               (id,date,account_id,paid_through_account_id,amount,vendor_id,notes,reference_number,status,created_at,updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                row["id"], row["date"], row["account_id"], row["paid_through_account_id"], row["amount"],
-                row["vendor_id"], row["notes"], row["reference_number"], row["status"], row["created_at"], row["updated_at"]
-            )
-        )
-        con.commit()
+    def add_attachment(self, pending_id: int, original_name: str | None, stored_name: str, stored_path: str) -> dict:
+        now = int(time.time())
+        with self._connect() as con:
+            cur = con.execute("""
+                INSERT INTO pending_attachments (pending_id, original_name, stored_name, stored_path, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (pending_id, original_name, stored_name, stored_path, now))
+            att_id = cur.lastrowid
+            row = con.execute("SELECT * FROM pending_attachments WHERE id = ?", (att_id,)).fetchone()
+        return dict(row)
 
-    return row
+    def list_attachments(self, pending_id: int) -> list[dict]:
+        with self._connect() as con:
+            rows = con.execute(
+                "SELECT * FROM pending_attachments WHERE pending_id = ? ORDER BY id DESC",
+                (pending_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
 
+    def get_attachment(self, attachment_id: int) -> dict:
+        with self._connect() as con:
+            row = con.execute("SELECT * FROM pending_attachments WHERE id = ?", (attachment_id,)).fetchone()
+        if not row:
+            raise KeyError("attachment_not_found")
+        return dict(row)
 
-def list_pending_expenses(status: str = "PENDING", date_from: str | None = None, date_to: str | None = None) -> list[dict]:
-    q = "SELECT id,date,amount,vendor_id,reference_number,notes,account_id,paid_through_account_id,status,created_at,updated_at FROM pending_expenses WHERE status=?"
-    params = [status]
-
-    if date_from:
-        q += " AND date >= ?"
-        params.append(date_from)
-    if date_to:
-        q += " AND date <= ?"
-        params.append(date_to)
-
-    q += " ORDER BY date DESC, created_at DESC"
-
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.row_factory = sqlite3.Row
-        rows = con.execute(q, params).fetchall()
-
-    return [dict(r) for r in rows]
-
-
-def get_pending_expense(expense_id: str) -> dict | None:
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.row_factory = sqlite3.Row
-        r = con.execute(
-            "SELECT * FROM pending_expenses WHERE id=?",
-            (expense_id,)
-        ).fetchone()
-    return dict(r) if r else None
-
-
-def update_pending_expense(expense_id: str, payload: dict) -> dict:
-    existing = get_pending_expense(expense_id)
-    if not existing:
-        raise KeyError("Pending expense not found")
-
-    allowed = {"date", "amount", "account_id", "paid_through_account_id", "vendor_id", "notes", "reference_number"}
-    updates = {}
-    for k in allowed:
-        if k in payload:
-            updates[k] = payload[k]
-
-    if "amount" in updates:
-        updates["amount"] = float(updates["amount"])
-    if "account_id" in updates:
-        updates["account_id"] = str(updates["account_id"]).strip()
-    if "paid_through_account_id" in updates:
-        updates["paid_through_account_id"] = str(updates["paid_through_account_id"]).strip()
-    if "vendor_id" in updates:
-        updates["vendor_id"] = (str(updates["vendor_id"]).strip() if updates["vendor_id"] else None)
-    if "notes" in updates:
-        updates["notes"] = (updates["notes"] or "").strip() or None
-    if "reference_number" in updates:
-        updates["reference_number"] = (updates["reference_number"] or "").strip() or None
-
-    updates["updated_at"] = _utc_now()
-
-    sets = ", ".join([f"{k}=?" for k in updates.keys()])
-    params = list(updates.values()) + [expense_id]
-
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.execute(f"UPDATE pending_expenses SET {sets} WHERE id=?", params)
-        con.commit()
-
-    return get_pending_expense(expense_id)
-
-
-def add_pending_attachment(expense_id: str, filename: str, content_type: str | None, data: bytes) -> dict:
-    if not get_pending_expense(expense_id):
-        raise KeyError("Pending expense not found")
-
-    att_id = str(uuid.uuid4())
-    exp_dir = (PENDING_UPLOADS_DIR / expense_id)
-    exp_dir.mkdir(parents=True, exist_ok=True)
-
-    stored_path = exp_dir / f"{att_id}__{filename}"
-    stored_path.write_bytes(data)
-
-    row = {
-        "id": att_id,
-        "expense_id": expense_id,
-        "filename": filename,
-        "content_type": content_type,
-        "stored_path": str(stored_path),
-        "uploaded_at": _utc_now(),
-    }
-
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.execute(
-            "INSERT INTO pending_attachments (id,expense_id,filename,content_type,stored_path,uploaded_at) VALUES (?,?,?,?,?,?)",
-            (row["id"], row["expense_id"], row["filename"], row["content_type"], row["stored_path"], row["uploaded_at"])
-        )
-        con.commit()
-
-    return row
-
-
-def list_pending_attachments(expense_id: str) -> list[dict]:
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.row_factory = sqlite3.Row
-        rows = con.execute(
-            "SELECT id,expense_id,filename,content_type,stored_path,uploaded_at FROM pending_attachments WHERE expense_id=? ORDER BY uploaded_at DESC",
-            (expense_id,)
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def get_pending_attachment(expense_id: str, attachment_id: str) -> dict | None:
-    with sqlite3.connect(PENDING_DB_PATH) as con:
-        con.row_factory = sqlite3.Row
-        r = con.execute(
-            "SELECT id,expense_id,filename,content_type,stored_path,uploaded_at FROM pending_attachments WHERE expense_id=? AND id=?",
-            (expense_id, attachment_id)
-        ).fetchone()
-    return dict(r) if r else None
+    def mark_posted(self, pending_id: int, zoho_expense_id: str) -> dict:
+        now = int(time.time())
+        with self._connect() as con:
+            con.execute("""
+                UPDATE pending_expenses
+                SET status = 'POSTED', zoho_expense_id = ?, updated_at = ?
+                WHERE id = ?
+            """, (zoho_expense_id, now, pending_id))
+        return self.get_pending(pending_id)
