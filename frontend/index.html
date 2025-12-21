@@ -76,14 +76,35 @@
             <input type="date" id="exp_date" required>
           </div>
 
+          <!-- UPDATED: Expense Account dropdown (values are Zoho account_id) -->
           <div class="field">
-            <label>Account ID (Expense Account)</label>
-            <input id="exp_account_id" placeholder="Paste Zoho expense account_id" required>
+            <label>Expense Account</label>
+            <select id="exp_account_id" required>
+              <option value="">Select expense account</option>
+              <option value="5571826000000361045">501 — OTA Monthly Usage Fee</option>
+              <option value="5571826000000000427">502 — IT and Internet Expenses</option>
+              <option value="5571826000000545567">503 — Ticket Void Penalty</option>
+              <option value="5571826000000864577">504 — Telecommunications Expense</option>
+              <option value="5571826000000000409">505 — Bank Fees and Charges</option>
+              <option value="5571826000000000445">520 — Salaries and related charges</option>
+              <option value="5571826000000864999">531 — Credit Card Charges</option>
+              <option value="5571826000000000451">540 — Depreciation Expense</option>
+              <option value="5571826000000864569">541 — Amortization Expense</option>
+            </select>
           </div>
 
+          <!-- UPDATED: Paid Through dropdown (values are Zoho account_id) -->
           <div class="field">
-            <label>Paid Through Account ID</label>
-            <input id="exp_paid_through_account_id" placeholder="Paste Zoho paid_through_account_id" required>
+            <label>Paid Through</label>
+            <select id="exp_paid_through_account_id" required>
+              <option value="">Select paid through</option>
+              <option value="5571826000000164424">104 — Wings Corporate FIB</option>
+              <option value="5571826000000000358">101 — Petty Cash</option>
+              <option value="5571826000000000361">102 — Cash Vault - A</option>
+              <option value="5571826000000506003">103 — Cash Vault - B</option>
+              <option value="5571826000000908003">105 — Cash Valut - C</option>
+              <option value="5571826000001165272">106 — Cash Vault - L</option>
+            </select>
           </div>
 
           <div class="field">
@@ -277,7 +298,7 @@
       }
     } catch (err) {
       expenseResult.className = "result error";
-      expenseResult.textContent = "Failed to create expense. Check your Account IDs and values.";
+      expenseResult.textContent = "Failed to create expense. Please check inputs.";
     }
 
     expenseResult.style.display = "block";
