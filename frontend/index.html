@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Assets & Expenses</title>
-  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link rel="stylesheet" href="/static/style.css?v=5">
 </head>
 <body>
 
@@ -108,15 +108,7 @@
               <label>Expense Account</label>
               <select id="exp_account_id" required>
                 <option value="">Select expense account</option>
-                <option value="5571826000000361045">501 — OTA Monthly Usage Fee</option>
-                <option value="5571826000000000427">502 — IT and Internet Expenses</option>
-                <option value="5571826000000545567">503 — Ticket Void Penalty</option>
-                <option value="5571826000000864577">504 — Telecommunications Expense</option>
-                <option value="5571826000000000409">505 — Bank Fees and Charges</option>
-                <option value="5571826000000000445">520 — Salaries and related charges</option>
-                <option value="5571826000000864999">531 — Credit Card Charges</option>
-                <option value="5571826000000000451">540 — Depreciation Expense</option>
-                <option value="5571826000000864569">541 — Amortization Expense</option>
+                <option value="5571826000000000427">IT and Internet Expenses</option>
               </select>
             </div>
 
@@ -124,12 +116,7 @@
               <label>Paid Through</label>
               <select id="exp_paid_through_account_id" required>
                 <option value="">Select paid through</option>
-                <option value="5571826000000164424">104 — Wings Corporate FIB</option>
-                <option value="5571826000000000358">101 — Petty Cash</option>
-                <option value="5571826000000000361">102 — Cash Vault - A</option>
-                <option value="5571826000000506003">103 — Cash Vault - B</option>
-                <option value="5571826000000908003">105 — Cash Valut - C</option>
-                <option value="5571826000001165272">106 — Cash Vault - L</option>
+                <option value="5571826000000908003">Cash Valut - C</option>
               </select>
             </div>
 
@@ -139,15 +126,15 @@
             </div>
 
             <div class="field full">
-              <label>Reference Number</label>
-              <input id="exp_reference_number" placeholder="Optional">
-            </div>
-
-            <div class="field full">
               <label>Vendor</label>
               <select id="exp_vendor_id">
                 <option value="">No vendor</option>
               </select>
+            </div>
+
+            <div class="field full">
+              <label>Receipt (optional)</label>
+              <input type="file" id="exp_receipt" accept="image/*,application/pdf">
             </div>
 
           </div>
@@ -189,7 +176,7 @@
 
         <pre id="expenseDetails" class="details hidden"></pre>
 
-        <!-- Hidden file input for receipt upload -->
+        <!-- Hidden file input for table attach -->
         <input type="file" id="receiptFile" class="hidden" accept="image/*,application/pdf">
 
       </div>
@@ -209,9 +196,6 @@
 </div>
 
 <script>
-  // ----------------------------
-  // Helpers
-  // ----------------------------
   function escapeHtml(str) {
     return String(str)
       .replaceAll("&", "&amp;")
@@ -231,9 +215,7 @@
     }
   }
 
-  // ----------------------------
   // Navigation
-  // ----------------------------
   const assetsSection = document.getElementById("assetsSection");
   const expensesSection = document.getElementById("expensesSection");
   const navAssets = document.getElementById("navAssets");
@@ -260,9 +242,7 @@
     await loadVendors();
   });
 
-  // ----------------------------
-  // Assets form
-  // ----------------------------
+  // Assets
   const assetForm = document.getElementById("assetForm");
   const assetResult = document.getElementById("assetResult");
   const assetBtn = document.getElementById("assetSubmitBtn");
@@ -289,9 +269,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
       const data = await res.json();
-
       if (data.ok) {
         assetResult.className = "result success";
         assetResult.textContent = `Asset created successfully (Asset No: ${data.asset_number})`;
@@ -299,7 +277,7 @@
       } else {
         throw new Error(JSON.stringify(data, null, 2));
       }
-    } catch (err) {
+    } catch {
       assetResult.className = "result error";
       assetResult.textContent = "Failed to create asset. Please check inputs.";
     }
@@ -309,9 +287,7 @@
     assetBtn.textContent = "Create Asset";
   });
 
-  // ----------------------------
-  // Vendors dropdown
-  // ----------------------------
+  // Vendors
   async function loadVendors() {
     const sel = document.getElementById("exp_vendor_id");
     sel.innerHTML = `<option value="">Loading…</option>`;
@@ -319,14 +295,13 @@
     try {
       const res = await fetch("/vendors/list?page=1&per_page=200");
       const out = await res.json();
-
       if (!out.ok) throw new Error("failed");
 
       sel.innerHTML = `<option value="">No vendor</option>`;
       (out.vendors || []).forEach(v => {
         const opt = document.createElement("option");
-        opt.value = v.vendor_id;
-        opt.textContent = v.vendor_name || v.vendor_id;
+        opt.value = v.contact_id || v.vendor_id || "";
+        opt.textContent = v.contact_name || v.vendor_name || v.contact_id || v.vendor_id;
         sel.appendChild(opt);
       });
     } catch {
@@ -334,74 +309,7 @@
     }
   }
 
-  // ----------------------------
-  // Expenses form
-  // ----------------------------
-  const expenseForm = document.getElementById("expenseForm");
-  const expenseResult = document.getElementById("expenseResult");
-  const expenseBtn = document.getElementById("expenseSubmitBtn");
-  const expenseListBtn = document.getElementById("expenseListBtn");
-  const expenseTableWrap = document.getElementById("expenseTableWrap");
-  const expenseTableBody = document.getElementById("expenseTableBody");
-  const expenseDetails = document.getElementById("expenseDetails");
-
-  expenseForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    expenseBtn.disabled = true;
-    expenseBtn.textContent = "Creating…";
-    expenseResult.style.display = "none";
-    expenseDetails.classList.add("hidden");
-
-    const payload = {
-      date: exp_date.value,
-      account_id: exp_account_id.value.trim(),
-      paid_through_account_id: exp_paid_through_account_id.value.trim(),
-      amount: Number(exp_amount.value),
-    };
-
-    if (exp_description.value.trim()) payload.description = exp_description.value.trim();
-    if (exp_reference_number.value.trim()) payload.reference_number = exp_reference_number.value.trim();
-    if (exp_vendor_id.value.trim()) payload.vendor_id = exp_vendor_id.value.trim();
-
-    try {
-      const res = await fetch("/expenses/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const text = await res.text();
-      let data = null;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
-
-      if (!res.ok) {
-        const err = data?.detail ?? data;
-        throw new Error(typeof err === "string" ? err : JSON.stringify(err, null, 2));
-      }
-
-      if (data && data.ok) {
-        expenseResult.className = "result success";
-        expenseResult.textContent = "Expense created successfully.";
-        expenseForm.reset();
-        setTodayIfEmpty(document.getElementById("exp_date"));
-        await loadVendors();
-      } else {
-        throw new Error(JSON.stringify(data, null, 2));
-      }
-
-    } catch (err) {
-      expenseResult.className = "result error";
-      expenseResult.textContent = "Failed to create expense:\n" + (err?.message || String(err));
-    }
-
-    expenseResult.style.display = "block";
-    expenseBtn.disabled = false;
-    expenseBtn.textContent = "Create Expense";
-  });
-
-  // ----------------------------
-  // Receipts (Attach/Upload + Open)
-  // ----------------------------
+  // Receipts (table attach + open)
   const receiptFile = document.getElementById("receiptFile");
 
   async function pickAndUploadReceipt(expenseId) {
@@ -420,38 +328,94 @@
     const fd = new FormData();
     fd.append("receipt", file);
 
-    try {
-      const res = await fetch(`/expenses/${encodeURIComponent(expenseId)}/receipt`, {
-        method: "POST",
-        body: fd
-      });
+    const res = await fetch(`/expenses/${encodeURIComponent(expenseId)}/receipt`, {
+      method: "POST",
+      body: fd
+    });
 
-      const text = await res.text();
-      let data = null;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-      if (!res.ok) {
-        const err = data?.detail ?? data;
-        throw new Error(typeof err === "string" ? err : JSON.stringify(err, null, 2));
-      }
-
-      expenseResult.className = "result success";
-      expenseResult.textContent = "Receipt uploaded successfully.";
-      expenseResult.style.display = "block";
-    } catch (err) {
-      expenseResult.className = "result error";
-      expenseResult.textContent = "Failed to upload receipt:\n" + (err?.message || String(err));
-      expenseResult.style.display = "block";
+    if (!res.ok) {
+      const err = data?.detail ?? data;
+      throw new Error(typeof err === "string" ? err : JSON.stringify(err, null, 2));
     }
+    return data;
   }
 
   function openReceipt(expenseId) {
     window.open(`/expenses/${encodeURIComponent(expenseId)}/receipt`, "_blank");
   }
 
-  // ----------------------------
-  // List expenses + render table
-  // ----------------------------
+  // Expenses form
+  const expenseForm = document.getElementById("expenseForm");
+  const expenseResult = document.getElementById("expenseResult");
+  const expenseBtn = document.getElementById("expenseSubmitBtn");
+  const expenseListBtn = document.getElementById("expenseListBtn");
+  const expenseTableWrap = document.getElementById("expenseTableWrap");
+  const expenseTableBody = document.getElementById("expenseTableBody");
+  const expenseDetails = document.getElementById("expenseDetails");
+  const expReceipt = document.getElementById("exp_receipt");
+
+  expenseForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    expenseBtn.disabled = true;
+    expenseBtn.textContent = "Creating…";
+    expenseResult.style.display = "none";
+    expenseDetails.classList.add("hidden");
+
+    const payload = {
+      date: exp_date.value,
+      account_id: exp_account_id.value.trim(),
+      paid_through_account_id: exp_paid_through_account_id.value.trim(),
+      amount: Number(exp_amount.value),
+    };
+    if (exp_description.value.trim()) payload.description = exp_description.value.trim();
+    if (exp_vendor_id.value.trim()) payload.vendor_id = exp_vendor_id.value.trim();
+
+    try {
+      const res = await fetch("/expenses/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const out = await res.json();
+      if (!res.ok || !out.ok) {
+        throw new Error(JSON.stringify(out?.detail || out, null, 2));
+      }
+
+      const expenseId = out.expense_id;
+      const reportNo = out.expense_report_no;
+
+      // If receipt chosen, upload immediately
+      const file = expReceipt.files && expReceipt.files[0];
+      if (file) {
+        expenseBtn.textContent = "Uploading receipt…";
+        await uploadReceipt(expenseId, file);
+        expenseResult.className = "result success";
+        expenseResult.textContent = `Expense created (${reportNo}) and receipt uploaded.`;
+      } else {
+        expenseResult.className = "result success";
+        expenseResult.textContent = `Expense created successfully (${reportNo}).`;
+      }
+
+      expenseForm.reset();
+      setTodayIfEmpty(document.getElementById("exp_date"));
+      await loadVendors();
+
+    } catch (err) {
+      expenseResult.className = "result error";
+      expenseResult.textContent = "Failed:\n" + (err?.message || String(err));
+    }
+
+    expenseResult.style.display = "block";
+    expenseBtn.disabled = false;
+    expenseBtn.textContent = "Create Expense";
+  });
+
+  // List expenses
   async function loadExpenses() {
     expenseResult.style.display = "none";
     expenseDetails.classList.add("hidden");
@@ -510,9 +474,15 @@
           const eid = btn.getAttribute("data-id");
 
           btn.addEventListener("click", async () => {
-            if (action === "details") return viewExpense(eid);
-            if (action === "open") return openReceipt(eid);
-            if (action === "upload") return pickAndUploadReceipt(eid);
+            try {
+              if (action === "details") return viewExpense(eid);
+              if (action === "open") return openReceipt(eid);
+              if (action === "upload") return pickAndUploadReceipt(eid);
+            } catch (err) {
+              expenseResult.className = "result error";
+              expenseResult.textContent = "Failed:\n" + (err?.message || String(err));
+              expenseResult.style.display = "block";
+            }
           });
         });
 
@@ -520,7 +490,7 @@
       });
 
       expenseTableWrap.classList.remove("hidden");
-    } catch (err) {
+    } catch {
       expenseResult.className = "result error";
       expenseResult.textContent = "Failed to load expenses.";
       expenseResult.style.display = "block";
@@ -529,24 +499,15 @@
 
   expenseListBtn.addEventListener("click", loadExpenses);
 
-  // ----------------------------
-  // View expense details
-  // ----------------------------
   async function viewExpense(expenseId) {
     expenseDetails.classList.add("hidden");
-    try {
-      const res = await fetch("/expenses/by-id/" + encodeURIComponent(expenseId));
-      const data = await res.json();
-      expenseDetails.textContent = JSON.stringify(data, null, 2);
-      expenseDetails.classList.remove("hidden");
-    } catch {
-      expenseResult.className = "result error";
-      expenseResult.textContent = "Failed to load expense details.";
-      expenseResult.style.display = "block";
-    }
+    const res = await fetch("/expenses/by-id/" + encodeURIComponent(expenseId));
+    const data = await res.json();
+    expenseDetails.textContent = JSON.stringify(data, null, 2);
+    expenseDetails.classList.remove("hidden");
   }
 
-  // Default dates on initial load
+  // Defaults
   setTodayIfEmpty(document.getElementById("purchase_date"));
   setTodayIfEmpty(document.getElementById("depreciation_start_date"));
 </script>
