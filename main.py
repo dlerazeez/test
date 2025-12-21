@@ -279,8 +279,6 @@ def create_expense(payload: dict):
         data = {"raw": resp.text}
 
     # Log full detail in Render logs
-    print("ZOHO /expenses status:", resp.status_code)
-    print("ZOHO /expenses response:", data)
 
     # If Zoho returns non-200
     if resp.status_code >= 400:
