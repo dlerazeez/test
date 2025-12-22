@@ -337,4 +337,79 @@ button:disabled {
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+=======
+}
+
+
+/* Modal */
+.modal.hidden { display: none; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+}
+
+.modalCard {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 18px 55px rgba(0,0,0,0.25);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btnIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  background: var(--secondaryBg);
+  color: var(--secondaryText);
+  border: 1px solid var(--border);
+  padding: 0;
+}
+
+.btnIcon:hover {
+  filter: brightness(0.98);
+}
+
+.danger {
+  background: #b91c1c;
+  color: #fff;
+  border-color: #b91c1c;
+}
+
+.row.right {
+  justify-content: flex-end;
+}
+
+.row.right button {
+  width: auto;
+}
+
+.row.right .primary,
+.row.right .secondary,
+.row.right .danger {
+  width: auto;
 }

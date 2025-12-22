@@ -3,6 +3,8 @@ from fastapi.responses import FileResponse
 from datetime import date, datetime
 import os
 import time
+=======
+import shutil
 
 from app.core.utils import guess_extension
 from app.core.zoho import (
@@ -28,15 +30,24 @@ def _month_range_today():
 
 
 def _current_month_start_end():
+<<<<<<< HEAD
+=======
+    """Return ISO date strings (YYYY-MM-DD) for current month start and end (inclusive)."""
+    from datetime import timedelta
+>>>>>>> a092ce4 (Update asset-service files)
     today = date.today()
     start = today.replace(day=1)
     if start.month == 12:
         next_month = date(start.year + 1, 1, 1)
     else:
         next_month = date(start.year, start.month + 1, 1)
+<<<<<<< HEAD
     end = next_month - (next_month - next_month)  # dummy, replaced below
     # real last day:
     last_day = (next_month - datetime.resolution).date()
+=======
+    last_day = next_month - timedelta(days=1)
+>>>>>>> a092ce4 (Update asset-service files)
     return start.isoformat(), last_day.isoformat()
 
 
@@ -144,6 +155,29 @@ def update_expense(request: Request, expense_id: str, payload: dict):
     return {"ok": True, "zoho": resp}
 
 
+<<<<<<< HEAD
+=======
+@router.delete("/expenses/delete/{expense_id}")
+def delete_expense(request: Request, expense_id: str):
+    """Delete a Zoho expense by ID."""
+    settings = request.app.state.settings
+    resp = zoho_request(settings, "DELETE", f"/expenses/{expense_id}", timeout=30)
+    data = zoho_json(resp)
+    if data.get("code") != 0:
+        raise HTTPException(400, data)
+
+    # Best-effort cleanup of locally stored attachments
+    try:
+        d = _storage_dir(request, expense_id)
+        if os.path.exists(d):
+            shutil.rmtree(d, ignore_errors=True)
+    except Exception:
+        pass
+
+    return {"ok": True, "zoho": data}
+
+
+>>>>>>> a092ce4 (Update asset-service files)
 @router.post("/expenses/{expense_id}/attachments")
 def add_expense_attachment(
     request: Request,
