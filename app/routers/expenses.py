@@ -1,68 +1,27 @@
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Query
 from fastapi.responses import FileResponse
-from datetime import date, datetime
+from datetime import datetime
 import os
 import time
-=======
 import shutil
 
-from app.core.utils import guess_extension
 from app.core.zoho import (
-    zoho_request, zoho_json,
-    zoho_get_expense, zoho_update_expense,
-    extract_cf_expense_report,
+    zoho_request,
+    zoho_json,
+    zoho_get_expense,
+    zoho_update_expense,
+    zoho_delete_expense,
     zoho_add_expense_attachment,
+    zoho_list_expenses,
+    zoho_list_expense_attachments,
+    zoho_open_latest_expense_attachment,
 )
 
 router = APIRouter()
 
 
-def _month_range_today():
-    today = date.today()
-    start = today.replace(day=1)
-    # compute last day of month
-    if start.month == 12:
-        next_month = date(start.year + 1, 1, 1)
-    else:
-        next_month = date(start.year, start.month + 1, 1)
-    end = next_month.replace(day=1) - datetime.resolution  # safe placeholder, we won’t rely on time
-    return start.isoformat(), (next_month - datetime.resolution).date().isoformat()  # not used
-
-
-def _current_month_start_end():
-<<<<<<< HEAD
-=======
-    """Return ISO date strings (YYYY-MM-DD) for current month start and end (inclusive)."""
-    from datetime import timedelta
->>>>>>> a092ce4 (Update asset-service files)
-    today = date.today()
-    start = today.replace(day=1)
-    if start.month == 12:
-        next_month = date(start.year + 1, 1, 1)
-    else:
-        next_month = date(start.year, start.month + 1, 1)
-<<<<<<< HEAD
-    end = next_month - (next_month - next_month)  # dummy, replaced below
-    # real last day:
-    last_day = (next_month - datetime.resolution).date()
-=======
-    last_day = next_month - timedelta(days=1)
->>>>>>> a092ce4 (Update asset-service files)
-    return start.isoformat(), last_day.isoformat()
-
-
-def _parse_date(s: str) -> date | None:
-    try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except Exception:
-        return None
-
-
-def _storage_dir(request: Request, expense_id: str) -> str:
-    settings = request.app.state.settings
-    d = os.path.join(settings.storage_dir, "expenses", expense_id)
-    os.makedirs(d, exist_ok=True)
-    return d
+def _safe_str(v):
+    return "" if v is None else str(v)
 
 
 @router.get("/expenses/list")
@@ -75,169 +34,103 @@ def list_expenses(
     date_from: str | None = None,
     date_to: str | None = None,
 ):
-    """
-    Default: current month (if date_from/date_to not provided).
-    Filter is optional: if user provides date_from/date_to, apply them.
-    """
-    settings = request.app.state.settings
-
-    if not date_from and not date_to:
-        date_from, date_to = _current_month_start_end()
-
-    params = {"page": page, "per_page": per_page, "filter_by": filter_by}
-    if search_text:
-        params["search_text"] = search_text
-
-    resp = zoho_request(settings, "GET", "/expenses", params=params, timeout=30)
-    data = zoho_json(resp)
-    if data.get("code") != 0:
-        raise HTTPException(400, data)
-
-    expenses = data.get("expenses", []) or []
-
-    # Local date filtering (safe even if Zoho doesn’t support date params here)
-    df = _parse_date(date_from) if date_from else None
-    dt = _parse_date(date_to) if date_to else None
-
-    if df or dt:
-        filtered = []
-        for x in expenses:
-            xd = _parse_date(x.get("date", "") or "")
-            if not xd:
-                continue
-            if df and xd < df:
-                continue
-            if dt and xd > dt:
-                continue
-            filtered.append(x)
-        expenses = filtered
-
-    # Normalize vendor name + reference
-    for x in expenses:
-        x["vendor_name"] = x.get("vendor_name") or x.get("contact_name") or x.get("vendor") or ""
-        x["reference"] = x.get("reference_number") or ""
-
-    return {"ok": True, "count": len(expenses), "expenses": expenses, "raw": data}
+    try:
+        out = zoho_list_expenses(
+            request,
+            page=page,
+            per_page=per_page,
+            filter_by=filter_by,
+            search_text=search_text,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        return out
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/expenses/by-id/{expense_id}")
 def get_expense_by_id(request: Request, expense_id: str):
-    settings = request.app.state.settings
-    return zoho_get_expense(settings, expense_id)
+    try:
+        exp = zoho_get_expense(request, expense_id)
+        return {"ok": True, "expense": exp}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/expenses/update/{expense_id}")
-def update_expense(request: Request, expense_id: str, payload: dict):
+async def update_expense(request: Request, expense_id: str):
     """
-    Allow editing fields (Notes->Zoho description, Reference->Zoho reference_number, vendor, account, paid_through, amount, date).
+    Expects JSON body like:
+    {
+      "date": "YYYY-MM-DD",
+      "amount": 1000,
+      "vendor_id": "...",
+      "reference_number": "...",
+      "description": "...",
+      "expense_account_id": "...",
+      "paid_through_account_id": "..."
+    }
+    Only provided keys will be updated.
     """
-    settings = request.app.state.settings
-
-    zoho_payload = {}
-    if "date" in payload:
-        zoho_payload["date"] = payload["date"]
-    if "amount" in payload:
-        zoho_payload["amount"] = float(payload["amount"])
-    if "account_id" in payload:
-        zoho_payload["account_id"] = str(payload["account_id"]).strip()
-    if "paid_through_account_id" in payload:
-        zoho_payload["paid_through_account_id"] = str(payload["paid_through_account_id"]).strip()
-    if "notes" in payload:
-        zoho_payload["description"] = payload["notes"]
-    if "vendor_id" in payload:
-        zoho_payload["vendor_id"] = payload["vendor_id"] or None
-    if "reference" in payload:
-        zoho_payload["reference_number"] = payload["reference"] or ""
-
-    resp = zoho_update_expense(settings, expense_id, zoho_payload)
-    if resp.get("code") != 0:
-        raise HTTPException(400, resp)
-    return {"ok": True, "zoho": resp}
+    try:
+        body = await request.json()
+        updated = zoho_update_expense(request, expense_id, body)
+        return {"ok": True, "expense": updated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-<<<<<<< HEAD
-=======
 @router.delete("/expenses/delete/{expense_id}")
 def delete_expense(request: Request, expense_id: str):
-    """Delete a Zoho expense by ID."""
-    settings = request.app.state.settings
-    resp = zoho_request(settings, "DELETE", f"/expenses/{expense_id}", timeout=30)
-    data = zoho_json(resp)
-    if data.get("code") != 0:
-        raise HTTPException(400, data)
-
-    # Best-effort cleanup of locally stored attachments
     try:
-        d = _storage_dir(request, expense_id)
-        if os.path.exists(d):
-            shutil.rmtree(d, ignore_errors=True)
-    except Exception:
-        pass
-
-    return {"ok": True, "zoho": data}
+        zoho_delete_expense(request, expense_id)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
->>>>>>> a092ce4 (Update asset-service files)
 @router.post("/expenses/{expense_id}/attachments")
-def add_expense_attachment(
-    request: Request,
-    expense_id: str,
-    file: UploadFile = File(...),
-):
+async def upload_expense_attachment(request: Request, expense_id: str, file: UploadFile = File(...)):
     """
-    Non-overwriting attachment:
-    - Renames file using cf_expense_report (if available) + timestamp
-    - Saves locally for "Open"
-    - Uploads to Zoho as an expense attachment (does NOT replace receipt)
+    Upload an attachment to a Zoho expense (non-overwriting).
     """
-    settings = request.app.state.settings
+    try:
+        temp_dir = os.path.join(os.getcwd(), "tmp_uploads")
+        os.makedirs(temp_dir, exist_ok=True)
 
-    # get expense_report_no
-    exp = zoho_get_expense(settings, expense_id)
-    report_no = None
-    if exp.get("code") == 0:
-        report_no = extract_cf_expense_report(settings, (exp.get("expense") or {}))
+        filename = file.filename or f"upload_{int(time.time())}"
+        temp_path = os.path.join(temp_dir, filename)
 
-    report_no = (report_no or f"EXP{expense_id}").strip()
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
 
-    ext = guess_extension(file.filename, file.content_type)
-    ts = int(time.time())
-    new_filename = f"{report_no}_{ts}{ext}"
+        out = zoho_add_expense_attachment(request, expense_id, temp_path, filename)
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
 
-    # Save locally
-    d = _storage_dir(request, expense_id)
-    local_path = os.path.join(d, new_filename)
-    with open(local_path, "wb") as out:
-        out.write(file.file.read())
-
-    # Upload to Zoho as attachment (non-overwriting)
-    with open(local_path, "rb") as f:
-        z = zoho_add_expense_attachment(settings, expense_id, new_filename, f, file.content_type)
-
-    return {"ok": True, "expense_id": expense_id, "report_no": report_no, "filename": new_filename, "zoho": z}
+        return {"ok": True, "data": out}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/expenses/{expense_id}/attachments/list")
-def list_local_attachments(request: Request, expense_id: str):
-    d = _storage_dir(request, expense_id)
-    items = []
-    if os.path.isdir(d):
-        for name in sorted(os.listdir(d)):
-            p = os.path.join(d, name)
-            if os.path.isfile(p):
-                items.append({"filename": name, "size": os.path.getsize(p)})
-    return {"ok": True, "count": len(items), "attachments": items}
+def list_expense_attachments(request: Request, expense_id: str):
+    try:
+        out = zoho_list_expense_attachments(request, expense_id)
+        return out
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/expenses/{expense_id}/attachments/open-latest")
-def open_latest_local_attachment(request: Request, expense_id: str):
-    d = _storage_dir(request, expense_id)
-    if not os.path.isdir(d):
-        raise HTTPException(404, "No attachments")
-    files = [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
-    if not files:
-        raise HTTPException(404, "No attachments")
-    files.sort()
-    latest = files[-1]
-    path = os.path.join(d, latest)
-    return FileResponse(path, filename=latest)
+def open_latest_attachment(request: Request, expense_id: str):
+    """
+    Opens the latest attachment of a Zoho expense in a new tab.
+    """
+    try:
+        return zoho_open_latest_expense_attachment(request, expense_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

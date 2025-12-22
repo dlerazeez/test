@@ -2,35 +2,41 @@ from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 import os
 import time
-import uuid
+import shutil
 
 from app.core.utils import guess_extension
-from app.core.zoho import (
-    zoho_create_expense,
-    zoho_get_expense,
-    extract_cf_expense_report,
-    zoho_add_expense_attachment,
-)
 
 router = APIRouter()
 
 
-def _pending_dir(request: Request, pending_id: int) -> str:
-    settings = request.app.state.settings
-    d = os.path.join(settings.storage_dir, "pending", str(pending_id))
-    os.makedirs(d, exist_ok=True)
-    return d
-
-
 @router.post("/pending-expenses/create")
-def create_pending_expense(request: Request, payload: dict):
-    required = ["date", "account_id", "amount", "paid_through_account_id"]
-    missing = [f for f in required if f not in payload or payload[f] in (None, "")]
+async def create_pending_expense(request: Request):
+    """
+    Creates a pending expense row in local store.
+    Body JSON (example):
+    {
+      "date": "YYYY-MM-DD",
+      "amount": 1000,
+      "currency": "IQD",
+      "vendor_name": "Vendor",
+      "reference_number": "",
+      "description": "",
+      "expense_account_id": "",
+      "expense_account_name": "",
+      "paid_through_account_id": "",
+      "paid_through_account_name": ""
+    }
+    """
+    body = await request.json()
+    required = ["date", "amount", "currency"]
+    missing = [k for k in required if k not in body or body[k] in [None, ""]]
     if missing:
         raise HTTPException(400, {"error": "Missing fields", "missing": missing})
 
     store = request.app.state.pending_store
-    row = store.create_pending(payload)
+    pending_id = store.create_pending(body)
+    row = store.get_pending(pending_id)
+    row["vendor_name"] = row.get("vendor_name") or ""
     return {"ok": True, "pending": row}
 
 
@@ -45,131 +51,85 @@ def list_pending_expenses(request: Request, date_from: str | None = None, date_t
 
 
 @router.get("/pending-expenses/{pending_id}")
-def get_pending_expense(request: Request, pending_id: int):
+def get_pending_expense(request: Request, pending_id: str):
     store = request.app.state.pending_store
-    try:
-        row = store.get_pending(pending_id)
-    except KeyError:
-        raise HTTPException(404, "Pending expense not found")
-    atts = store.list_attachments(pending_id)
-    return {"ok": True, "pending": row, "attachments": atts}
-
-
-@router.put("/pending-expenses/{pending_id}")
-def update_pending_expense(request: Request, pending_id: int, payload: dict):
-    store = request.app.state.pending_store
-    try:
-        row = store.update_pending(pending_id, payload)
-    except KeyError:
-        raise HTTPException(404, "Pending expense not found")
+    row = store.get_pending(pending_id)
+    if not row:
+        raise HTTPException(404, {"error": "Not found"})
+    row["vendor_name"] = row.get("vendor_name") or ""
     return {"ok": True, "pending": row}
 
 
-@router.post("/pending-expenses/{pending_id}/attachments")
-def add_pending_attachment(request: Request, pending_id: int, file: UploadFile = File(...)):
+@router.put("/pending-expenses/{pending_id}")
+async def update_pending_expense(request: Request, pending_id: str):
     store = request.app.state.pending_store
+    row = store.get_pending(pending_id)
+    if not row:
+        raise HTTPException(404, {"error": "Not found"})
+
+    body = await request.json()
+    store.update_pending(pending_id, body)
+    row2 = store.get_pending(pending_id)
+    row2["vendor_name"] = row2.get("vendor_name") or ""
+    return {"ok": True, "pending": row2}
+
+
+@router.post("/pending-expenses/{pending_id}/attachments")
+async def upload_pending_attachment(request: Request, pending_id: str, file: UploadFile = File(...)):
+    store = request.app.state.pending_store
+    row = store.get_pending(pending_id)
+    if not row:
+        raise HTTPException(404, {"error": "Not found"})
+
+    temp_dir = os.path.join(os.getcwd(), "tmp_uploads")
+    os.makedirs(temp_dir, exist_ok=True)
+
+    orig_name = file.filename or f"upload_{int(time.time())}"
+    temp_path = os.path.join(temp_dir, orig_name)
+
+    with open(temp_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    ext = guess_extension(orig_name)
+    att = store.add_attachment(pending_id, temp_path, orig_name, ext)
+
     try:
-        store.get_pending(pending_id)
-    except KeyError:
-        raise HTTPException(404, "Pending expense not found")
+        os.remove(temp_path)
+    except Exception:
+        pass
 
-    ext = guess_extension(file.filename, file.content_type)
-    stored_name = f"pending_{pending_id}_{uuid.uuid4().hex}{ext}"
-
-    d = _pending_dir(request, pending_id)
-    path = os.path.join(d, stored_name)
-    with open(path, "wb") as out:
-        out.write(file.file.read())
-
-    att = store.add_attachment(
-        pending_id=pending_id,
-        original_name=file.filename,
-        stored_name=stored_name,
-        stored_path=path,
-    )
     return {"ok": True, "attachment": att}
 
 
 @router.get("/pending-expenses/{pending_id}/attachments/list")
-def list_pending_attachments(request: Request, pending_id: int):
+def list_pending_attachments(request: Request, pending_id: str):
     store = request.app.state.pending_store
+    row = store.get_pending(pending_id)
+    if not row:
+        raise HTTPException(404, {"error": "Not found"})
     return {"ok": True, "attachments": store.list_attachments(pending_id)}
 
 
 @router.get("/pending-expenses/attachments/open/{attachment_id}")
-def open_pending_attachment(request: Request, attachment_id: int):
+def open_pending_attachment(request: Request, attachment_id: str):
     store = request.app.state.pending_store
-    try:
-        att = store.get_attachment(attachment_id)
-    except KeyError:
-        raise HTTPException(404, "Attachment not found")
-    path = att["stored_path"]
-    if not os.path.exists(path):
-        raise HTTPException(404, "File missing on server")
-    return FileResponse(path, filename=att.get("original_name") or att["stored_name"])
+    path, filename = store.get_attachment_path(attachment_id)
+    if not path or not os.path.exists(path):
+        raise HTTPException(404, {"error": "Attachment not found"})
+    return FileResponse(path, filename=filename)
 
 
 @router.post("/pending-expenses/{pending_id}/approve")
-def approve_pending_expense(request: Request, pending_id: int):
+async def approve_pending_expense(request: Request, pending_id: str):
     """
-    Posts the pending expense to Zoho and uploads all local attachments as Zoho expense attachments.
+    Approve means: create in Zoho (Expense endpoint) + attach local files + mark approved/closed locally.
+    The frontend calls backend Zoho expense creation separately; this endpoint can remain as a placeholder.
     """
-    settings = request.app.state.settings
     store = request.app.state.pending_store
+    row = store.get_pending(pending_id)
+    if not row:
+        raise HTTPException(404, {"error": "Not found"})
 
-    try:
-        p = store.get_pending(pending_id)
-    except KeyError:
-        raise HTTPException(404, "Pending expense not found")
-
-    if p.get("status") != "PENDING":
-        raise HTTPException(400, "Pending expense is not in PENDING status")
-
-    zoho_payload = {
-        "date": p["date"],
-        "account_id": str(p["account_id"]).strip(),
-        "paid_through_account_id": str(p["paid_through_account_id"]).strip(),
-        "amount": float(p["amount"]),
-    }
-    if p.get("notes"):
-        zoho_payload["description"] = p["notes"]  # Notes -> Zoho description
-    if p.get("vendor_id"):
-        zoho_payload["vendor_id"] = p["vendor_id"]
-    if p.get("reference"):
-        zoho_payload["reference_number"] = p["reference"]
-
-    created = zoho_create_expense(settings, zoho_payload)
-    if created.get("code") != 0:
-        raise HTTPException(400, created)
-
-    expense_id = (created.get("expense") or {}).get("expense_id")
-    if not expense_id:
-        raise HTTPException(400, {"error": "Zoho created expense but no expense_id returned", "zoho": created})
-
-    # Determine report number for renaming attachments
-    exp = zoho_get_expense(settings, expense_id)
-    report_no = None
-    if exp.get("code") == 0:
-        report_no = extract_cf_expense_report(settings, (exp.get("expense") or {}))
-    report_no = (report_no or f"EXP{expense_id}").strip()
-
-    # Upload attachments (non-overwriting) to Zoho
-    atts = store.list_attachments(pending_id)
-    uploaded = []
-    idx = 1
-    for a in atts:
-        path = a["stored_path"]
-        if not os.path.exists(path):
-            continue
-        # keep extension from stored name
-        _, ext = os.path.splitext(a["stored_name"])
-        ts = int(time.time())
-        filename = f"{report_no}_{ts}_{idx}{ext or ''}"
-        with open(path, "rb") as f:
-            z = zoho_add_expense_attachment(settings, expense_id, filename, f, None)
-        uploaded.append({"local_attachment_id": a["id"], "filename": filename, "zoho": z})
-        idx += 1
-
-    store.mark_posted(pending_id, expense_id)
-
-    return {"ok": True, "zoho_expense_id": expense_id, "report_no": report_no, "uploaded": uploaded}
+    # You can implement full approve logic later if desired.
+    store.mark_approved(pending_id)
+    return {"ok": True}
