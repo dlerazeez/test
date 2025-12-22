@@ -186,3 +186,49 @@ def zoho_list_expense_attachments(settings, expense_id: str) -> dict:
         attachments = []
     return {"code": 0, "expense_id": expense_id, "attachments": attachments}
 
+# -------------------------------------------------------------------
+# Compatibility helpers (to prevent ImportError during startup)
+# -------------------------------------------------------------------
+
+def zoho_open_expense_receipt(settings, expense_id: str) -> requests.Response:
+    """
+    Download/open the expense receipt as a binary response from Zoho.
+    """
+    return zoho_request(settings, "GET", f"/expenses/{expense_id}/receipt", timeout=60)
+
+
+def zoho_open_expense_attachment(settings, expense_id: str) -> requests.Response:
+    """
+    Download/open the expense attachment as a binary response from Zoho.
+    """
+    return zoho_request(settings, "GET", f"/expenses/{expense_id}/attachment", timeout=60)
+
+
+def zoho_open_latest_expense_attachment(settings, expense_id: str) -> requests.Response:
+    """
+    Backward-compatible helper.
+
+    Some code paths call this expecting “the latest attachment”.
+    Zoho Expenses often expose a single receipt or a single attachment endpoint.
+    We try receipt first, then attachment.
+    """
+    resp = zoho_open_expense_receipt(settings, expense_id)
+    if getattr(resp, "status_code", 0) == 200:
+        return resp
+    return zoho_open_expense_attachment(settings, expense_id)
+
+
+def zoho_delete_expense_receipt(settings, expense_id: str) -> dict:
+    """
+    Delete expense receipt (if supported by the Zoho Books API edition).
+    """
+    resp = zoho_request(settings, "DELETE", f"/expenses/{expense_id}/receipt", timeout=30)
+    return zoho_json(resp)
+
+
+def zoho_delete_expense_attachment(settings, expense_id: str) -> dict:
+    """
+    Delete expense attachment (if supported by the Zoho Books API edition).
+    """
+    resp = zoho_request(settings, "DELETE", f"/expenses/{expense_id}/attachment", timeout=30)
+    return zoho_json(resp)
