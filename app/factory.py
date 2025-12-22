@@ -27,6 +27,7 @@ def create_app(base_dir: str | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -34,10 +35,13 @@ def create_app(base_dir: str | None = None) -> FastAPI:
     # Static frontend
     app.mount("/static", StaticFiles(directory=settings.frontend_dir), name="static")
 
-    # Shared state
+    # Shared state (MUST be inside create_app)
     app.state.settings = settings
     app.state.coa_store = COAStore(csv_path=settings.coa_csv_path)
-    app.state.pending_store = PendingStore(db_path=settings.pending_db_path, storage_dir=settings.storage_dir)
+    app.state.pending_store = PendingStore(
+        db_path=settings.pending_db_path,
+        storage_dir=settings.storage_dir,
+    )
 
     @app.get("/", response_class=HTMLResponse)
     def serve_frontend():
