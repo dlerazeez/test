@@ -133,28 +133,6 @@ class PendingStore:
             raise KeyError("attachment_not_found")
         return dict(row)
 
-
-    def get_attachment_path(self, attachment_id: int) -> tuple[str, str]:
-        att = self.get_attachment(int(attachment_id))
-        return att.get('stored_path') or '', att.get('original_name') or (att.get('stored_name') or '')
-
-    def mark_approved(self, pending_id: int) -> dict:
-        now = int(time.time())
-        with self._connect() as con:
-            con.execute("""
-                UPDATE pending_expenses
-                SET status = 'APPROVED', updated_at = ?
-                WHERE id = ?
-            """, (now, int(pending_id)))
-        return self.get_pending(int(pending_id))
-
-    def delete_pending(self, pending_id: int) -> None:
-        pending_id = int(pending_id)
-        with self._connect() as con:
-            con.execute("DELETE FROM pending_attachments WHERE pending_id = ?", (pending_id,))
-            cur = con.execute("DELETE FROM pending_expenses WHERE id = ?", (pending_id,))
-        if getattr(cur, 'rowcount', 0) == 0:
-            raise KeyError('pending_not_found')
     def mark_posted(self, pending_id: int, zoho_expense_id: str) -> dict:
         now = int(time.time())
         with self._connect() as con:

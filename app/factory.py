@@ -8,10 +8,11 @@ from app.core.config import Settings
 from app.services.coa_store import COAStore
 from app.services.pending_store import PendingStore
 
+from app.routers.assets import router as assets_router
 from app.routers.coa import router as coa_router
 from app.routers.expenses import router as expenses_router
 from app.routers.vendors import router as vendors_router
-from app.routers.pending_expenses import router as pending_router
+from app.routers.pending import router as pending_router
 
 
 def create_app(base_dir: str | None = None) -> FastAPI:
@@ -21,13 +22,7 @@ def create_app(base_dir: str | None = None) -> FastAPI:
 
     settings = Settings(base_dir=base_dir)
 
-    # Disable built-in API docs endpoints (user requested removing API docs link)
-    app = FastAPI(
-        title="Expenses Service",
-        docs_url=None,
-        redoc_url=None,
-        openapi_url=None,
-    )
+    app = FastAPI(title="Assets & Expenses Service")
 
     app.add_middleware(
         CORSMiddleware,
@@ -60,6 +55,7 @@ def create_app(base_dir: str | None = None) -> FastAPI:
         }
 
     # Routers
+    app.include_router(assets_router, tags=["assets"])
     app.include_router(coa_router, tags=["coa"])
     app.include_router(expenses_router, tags=["expenses"])
     app.include_router(vendors_router, tags=["vendors"])
