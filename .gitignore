@@ -1,6 +1,23 @@
-venv/
-.env
+# Python cache
 __pycache__/
 *.pyc
+
+# Virtual environments
+.venv/
+venv/
+
+# Databases
+*.db
+*.sqlite
+
+# Uploaded files
+data/uploads/
+
+# Runtime data
+data/sessions.json
+data/users.json
+app/services/pending_expenses.json
+
+# OS files
 .DS_Store
-.env
+
