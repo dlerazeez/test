@@ -1,30 +1,25 @@
-from fastapi import APIRouter, Request, HTTPException
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException
+
+from ..services.coa_store import coa_store
 
 router = APIRouter()
 
 
-@router.get("/coa/expense-accounts")
-def coa_expense_accounts(request: Request):
-    store = request.app.state.coa_store
-    if store.load_error:
-        return {"ok": False, "error": store.load_error, "accounts": []}
-    accounts = store.filter({"Expense", "Other Expense"})
-    return {"ok": True, "count": len(accounts), "accounts": accounts}
+@router.get("/expense_accounts")
+def expense_accounts():
+    return {"accounts": coa_store.expense_accounts()}
 
 
-@router.get("/coa/paid-through-accounts")
-def coa_paid_through_accounts(request: Request):
-    store = request.app.state.coa_store
-    if store.load_error:
-        return {"ok": False, "error": store.load_error, "accounts": []}
-    accounts = store.filter({"Cash", "Bank"})
-    return {"ok": True, "count": len(accounts), "accounts": accounts}
+@router.get("/paid_through")
+def paid_through():
+    return {"accounts": coa_store.paid_through_accounts()}
 
 
-@router.post("/coa/reload")
-def coa_reload(request: Request):
-    store = request.app.state.coa_store
-    store.reload()
-    if store.load_error:
-        raise HTTPException(400, store.load_error)
-    return {"ok": True, "count": len(store.rows)}
+@router.get("/accrued_paid_through")
+def accrued_paid_through():
+    acc = coa_store.accrued_paid_through_account()
+    if not acc:
+        raise HTTPException(status_code=400, detail="Accrued Expenses account not found in COA CSV")
+    return {"account": acc}

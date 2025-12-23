@@ -1,64 +1,43 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from __future__ import annotations
+
 import os
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-from app.core.config import Settings
-from app.services.coa_store import COAStore
-from app.services.pending_store import PendingStore
+from .core.config import settings
+from .routers.assets import router as assets_router
+from .routers.expenses import router as expenses_router
+from .routers.pending import router as pending_router
+from .routers.coa import router as coa_router
+from .routers.vendors import router as vendors_router
 
-from app.routers.assets import router as assets_router
-from app.routers.coa import router as coa_router
-from app.routers.expenses import router as expenses_router
-from app.routers.vendors import router as vendors_router
-from app.routers.pending import router as pending_router
+from .routers.auth import router as auth_router
+from .routers.receipts import router as receipts_router
+from .routers.accrued import router as accrued_router
 
 
-def create_app(base_dir: str | None = None) -> FastAPI:
-    if not base_dir:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        base_dir = os.path.dirname(base_dir)  # app/ -> project root
+def create_app() -> FastAPI:
+    app = FastAPI(title="Asset Service", version="1.0.0")
 
-    settings = Settings(base_dir=base_dir)
+    # API routers
+    app.include_router(assets_router, prefix="/api/assets", tags=["assets"])
+    app.include_router(expenses_router, prefix="/api/expenses", tags=["expenses"])
+    app.include_router(pending_router, prefix="/api/pending", tags=["pending"])
+    app.include_router(coa_router, prefix="/api/coa", tags=["coa"])
+    app.include_router(vendors_router, prefix="/api/vendors", tags=["vendors"])
 
-    app = FastAPI(title="Assets & Expenses Service")
+    app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+    app.include_router(receipts_router, prefix="/api/receipts", tags=["receipts"])
+    app.include_router(accrued_router, prefix="/api/accrued", tags=["accrued"])
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Static UI
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    static_dir = os.path.join(base_dir, "static")
+    if os.path.isdir(static_dir):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-    # Static frontend
-    app.mount("/static", StaticFiles(directory=settings.frontend_dir), name="static")
-
-    # Shared state
-    app.state.settings = settings
-    app.state.coa_store = COAStore(csv_path=settings.coa_csv_path)
-    app.state.pending_store = PendingStore(db_path=settings.pending_db_path, storage_dir=settings.storage_dir)
-
-    @app.get("/", response_class=HTMLResponse)
-    def serve_frontend():
-        index_path = os.path.join(settings.frontend_dir, "index.html")
-        with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    @app.get("/health")
-    def health():
-        return {
-            "ok": True,
-            "coa_loaded": app.state.coa_store.load_error is None,
-            "coa_error": app.state.coa_store.load_error,
-            "pending_db": settings.pending_db_path,
-        }
-
-    # Routers
-    app.include_router(assets_router, tags=["assets"])
-    app.include_router(coa_router, tags=["coa"])
-    app.include_router(expenses_router, tags=["expenses"])
-    app.include_router(vendors_router, tags=["vendors"])
-    app.include_router(pending_router, tags=["pending"])
+    # Uploads (receipts)
+    os.makedirs(settings.uploads_dir, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
 
     return app

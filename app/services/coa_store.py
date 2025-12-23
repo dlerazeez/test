@@ -1,55 +1,79 @@
+from __future__ import annotations
+
 import csv
 import os
+from typing import Dict, List, Optional
+
+from ..core.config import settings
 
 
 class COAStore:
-    def __init__(self, csv_path: str):
+    """
+    Minimal CSV-backed COA loader for dropdowns.
+    Expected columns: Account Name, Account Code, Account Type, Account SubType, Account ID (optional)
+    """
+    def __init__(self, csv_path: str) -> None:
         self.csv_path = csv_path
-        self.rows: list[dict] = []
-        self.load_error: str | None = None
-        self.reload()
+        self._rows: List[Dict[str, str]] = []
+        self._loaded = False
 
-    def reload(self):
-        self.rows = []
-        self.load_error = None
-
-        if not os.path.exists(self.csv_path):
-            self.load_error = f"COA CSV not found at '{self.csv_path}'. Put Chart_of_Accounts.csv in root or set COA_CSV_PATH."
+    def _load(self) -> None:
+        if self._loaded:
+            return
+        self._loaded = True
+        if not self.csv_path or not os.path.exists(self.csv_path):
+            self._rows = []
             return
 
-        try:
-            with open(self.csv_path, "r", encoding="utf-8-sig", newline="") as f:
-                reader = csv.DictReader(f)
-                for r in reader:
-                    row = {
-                        "account_id": (r.get("Account ID") or "").strip(),
-                        "account_name": (r.get("Account Name") or "").strip(),
-                        "account_code": str(r.get("Account Code") or "").strip(),
-                        "account_type": (r.get("Account Type") or "").strip(),
-                        "currency": (r.get("Currency") or "").strip(),
-                        "parent_account": (r.get("Parent Account") or "").strip(),
-                        "status": (r.get("Account Status") or "").strip(),
-                    }
-                    if row["account_id"] and row["account_name"]:
-                        self.rows.append(row)
-        except Exception as e:
-            self.load_error = f"Failed to load COA CSV: {repr(e)}"
+        with open(self.csv_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            self._rows = [r for r in reader]
 
-    def filter(self, types: set[str]) -> list[dict]:
+    def expense_accounts(self) -> List[Dict[str, str]]:
+        self._load()
+        # Heuristic: include "Expense" and "Cost of Goods Sold"
         out = []
-        for r in self.rows:
-            if r.get("status") and r["status"].lower() not in ("active", ""):
-                continue
-            if r.get("account_type") in types:
+        for r in self._rows:
+            t = (r.get("Account Type") or "").strip().lower()
+            if "expense" in t or "cost of goods sold" in t:
                 out.append(r)
-
-        def sort_key(x):
-            code = x.get("account_code", "")
-            try:
-                code_num = int(float(code)) if code else 10**9
-            except Exception:
-                code_num = 10**9
-            return (code_num, x.get("account_name", ""))
-
-        out.sort(key=sort_key)
         return out
+
+    def paid_through_accounts(self) -> List[Dict[str, str]]:
+        self._load()
+        # Heuristic: bank/cash/credit card
+        out = []
+        for r in self._rows:
+            t = (r.get("Account Type") or "").strip().lower()
+            if any(x in t for x in ["bank", "cash", "credit card"]):
+                out.append(r)
+        return out
+
+    def accrued_paid_through_account(self) -> Optional[Dict[str, str]]:
+        """
+        Finds the COA row that represents the 'Accrued Expenses' liability account.
+        Matching is by:
+          - settings.accrued_paid_through_account_id if provided, else
+          - Account Name equals settings.accrued_expenses_account_name (case-insensitive)
+        """
+        self._load()
+
+        if settings.accrued_paid_through_account_id:
+            target = settings.accrued_paid_through_account_id.strip()
+            for r in self._rows:
+                rid = (r.get("Account ID") or r.get("Account Id") or r.get("account_id") or "").strip()
+                if rid == target:
+                    return r
+
+        target_name = (settings.accrued_expenses_account_name or "").strip().lower()
+        if not target_name:
+            return None
+
+        for r in self._rows:
+            name = (r.get("Account Name") or r.get("account_name") or "").strip().lower()
+            if name == target_name:
+                return r
+        return None
+
+
+coa_store = COAStore(settings.coa_csv_path)

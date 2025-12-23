@@ -1,136 +1,147 @@
+from __future__ import annotations
+
 import time
-import requests
-from typing import Any
+from typing import Any, Dict, Optional
 
-_access_token = None
-_token_expiry = 0
+import httpx
+from fastapi import HTTPException
 
-
-def zoho_json(resp: requests.Response) -> dict:
-    try:
-        return resp.json()
-    except Exception:
-        return {"raw": resp.text, "status_code": resp.status_code}
+from .config import settings
+from .utils import ensure_ok_zoho
 
 
-def get_access_token(settings) -> str:
-    global _access_token, _token_expiry
+class ZohoClient:
+    def __init__(self) -> None:
+        self.client_id = settings.zoho_client_id
+        self.client_secret = settings.zoho_client_secret
+        self.refresh_token = settings.zoho_refresh_token
+        self.org_id = settings.zoho_org_id
+        self.dc = settings.zoho_dc
+        self.books_base_url = settings.zoho_books_base_url
 
-    if _access_token and time.time() < _token_expiry:
-        return _access_token
+        self._access_token: Optional[str] = None
+        self._access_token_expiry: float = 0.0  # epoch seconds
 
-    resp = requests.post(
-        settings.zoho_auth_url,
-        data={
+        # Accounts server base (Zoho Accounts). For most DCs:
+        # com -> https://accounts.zoho.com
+        # eu  -> https://accounts.zoho.eu
+        # in  -> https://accounts.zoho.in
+        # au  -> https://accounts.zoho.com.au
+        # ca  -> https://accounts.zohocloud.ca
+        # jp  -> https://accounts.zoho.jp
+        # sa  -> https://accounts.zoho.sa
+        self.zoho_auth_url = self._accounts_url()
+
+    def _accounts_url(self) -> str:
+        dc = (self.dc or "com").lower().strip()
+        mapping = {
+            "com": "https://accounts.zoho.com",
+            "eu": "https://accounts.zoho.eu",
+            "in": "https://accounts.zoho.in",
+            "au": "https://accounts.zoho.com.au",
+            "ca": "https://accounts.zohocloud.ca",
+            "jp": "https://accounts.zoho.jp",
+            "sa": "https://accounts.zoho.sa",
+        }
+        return mapping.get(dc, "https://accounts.zoho.com")
+
+    async def _refresh_access_token(self) -> str:
+        url = f"{self.zoho_auth_url}/oauth/v2/token"
+        data = {
+            "refresh_token": self.refresh_token,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
             "grant_type": "refresh_token",
-            "client_id": settings.zoho_client_id,
-            "client_secret": settings.zoho_client_secret,
-            "refresh_token": settings.zoho_refresh_token,
-        },
-        timeout=20,
-    )
-    data = zoho_json(resp)
+        }
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(url, data=data)
+            r.raise_for_status()
+            payload = r.json()
 
-    if "access_token" not in data:
-        raise RuntimeError(f"Failed to refresh Zoho token: {data}")
+        token = payload.get("access_token")
+        expires_in = payload.get("expires_in", 3600)
+        if not token:
+            raise RuntimeError(f"Failed to refresh Zoho token: {payload}")
 
-    _access_token = data["access_token"]
-    _token_expiry = time.time() + int(data.get("expires_in", 3600)) - 60
-    return _access_token
+        self._access_token = token
+        self._access_token_expiry = time.time() + int(expires_in) - 60  # 60s buffer
+        return token
 
+    async def get_access_token(self) -> str:
+        if self._access_token and time.time() < self._access_token_expiry:
+            return self._access_token
+        return await self._refresh_access_token()
 
-def zoho_headers(settings, extra: dict | None = None) -> dict:
-    token = get_access_token(settings)
-    h = {"Authorization": f"Zoho-oauthtoken {token}"}
-    if extra:
-        h.update(extra)
-    return h
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        files: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        token = await self.get_access_token()
+        headers = {"Authorization": f"Zoho-oauthtoken {token}"}
 
+        params = params or {}
+        if "organization_id" not in params:
+            if self.org_id:
+                params["organization_id"] = self.org_id
+            else:
+                raise HTTPException(status_code=500, detail="ZOHO_ORG_ID is not set")
 
-def zoho_request(settings, method: str, path: str, *, params=None, json=None, files=None, headers=None, timeout=30):
-    if not path.startswith("/"):
-        path = "/" + path
-    url = f"{settings.zoho_base}{path}"
+        url = f"{self.books_base_url.rstrip('/')}/{path.lstrip('/')}"
 
-    p = params.copy() if isinstance(params, dict) else {}
-    p["organization_id"] = settings.zoho_org_id
-
-    h = zoho_headers(settings, headers or {})
-
-    return requests.request(
-        method=method.upper(),
-        url=url,
-        params=p,
-        json=json,
-        files=files,
-        headers=h,
-        timeout=timeout,
-    )
-
-
-def extract_cf_expense_report(settings, expense_obj: dict) -> str | None:
-    api_name = settings.expense_cf_api_name
-
-    if not expense_obj or not isinstance(expense_obj, dict):
-        return None
-
-    cfh = expense_obj.get("custom_field_hash")
-    if isinstance(cfh, dict):
-        v = cfh.get(api_name)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-
-    cfs = expense_obj.get("custom_fields")
-    if isinstance(cfs, list):
-        for item in cfs:
-            if not isinstance(item, dict):
-                continue
-            if item.get("api_name") == api_name:
-                val = item.get("value")
-                if isinstance(val, str) and val.strip():
-                    return val.strip()
-
-    return None
+        async with httpx.AsyncClient(timeout=60) as client:
+            try:
+                r = await client.request(
+                    method,
+                    url,
+                    headers=headers,
+                    params=params,
+                    json=json,
+                    data=data,
+                    files=files,
+                )
+                r.raise_for_status()
+                return r.json()
+            except httpx.HTTPStatusError as e:
+                try:
+                    detail = e.response.json()
+                except Exception:
+                    detail = e.response.text
+                raise HTTPException(status_code=e.response.status_code, detail=detail)
+            except httpx.RequestError as e:
+                raise HTTPException(status_code=502, detail=str(e))
 
 
-def zoho_create_expense(settings, payload: dict) -> dict:
-    resp = zoho_request(
-        settings,
-        "POST",
-        "/expenses",
-        json=payload,
-        headers={"Content-Type": "application/json"},
-        timeout=30,
-    )
-    return zoho_json(resp)
+zoho = ZohoClient()
 
 
-def zoho_update_expense(settings, expense_id: str, payload: dict) -> dict:
-    resp = zoho_request(
-        settings,
-        "PUT",
-        f"/expenses/{expense_id}",
-        json=payload,
-        headers={"Content-Type": "application/json"},
-        timeout=30,
-    )
-    return zoho_json(resp)
+# -------------------------------------------------------------------
+# Backwards-compatible helpers for routers (assets.py, expenses, etc.)
+# -------------------------------------------------------------------
+async def zoho_request(
+    method: str,
+    path: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    json: Optional[Dict[str, Any]] = None,
+    data: Optional[Dict[str, Any]] = None,
+    files: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return await zoho.request(method, path, params=params, json=json, data=data, files=files)
 
 
-def zoho_get_expense(settings, expense_id: str) -> dict:
-    resp = zoho_request(settings, "GET", f"/expenses/{expense_id}", timeout=30)
-    return zoho_json(resp)
-
-
-def zoho_add_expense_attachment(settings, expense_id: str, filename: str, fileobj, content_type: str | None) -> dict:
-    # Zoho “Add attachment to an expense” uses multipart with "attachment"
-    files = {"attachment": (filename, fileobj, content_type or "application/octet-stream")}
-    resp = zoho_request(settings, "POST", f"/expenses/{expense_id}/attachment", files=files, timeout=90)
-    return zoho_json(resp)
-
-
-def zoho_add_expense_receipt(settings, expense_id: str, filename: str, fileobj, content_type: str | None) -> dict:
-    # Single receipt (may overwrite). Keep for “receipt open” compatibility.
-    files = {"receipt": (filename, fileobj, content_type or "application/octet-stream")}
-    resp = zoho_request(settings, "POST", f"/expenses/{expense_id}/receipt", files=files, timeout=90)
-    return zoho_json(resp)
+async def zoho_json(
+    method: str,
+    path: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    json: Optional[Dict[str, Any]] = None,
+    data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    resp = await zoho_request(method, path, params=params, json=json, data=data)
+    return ensure_ok_zoho(resp)
