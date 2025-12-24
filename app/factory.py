@@ -14,6 +14,7 @@ from .routers.vendors import router as vendors_router
 from .routers.auth import router as auth_router
 from .routers.receipts import router as receipts_router
 from .routers.accrued import router as accrued_router
+from .routers.cash import router as cash_router  # ✅ ADDED
 
 
 def create_app() -> FastAPI:
@@ -29,6 +30,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
     app.include_router(receipts_router, prefix="/api/receipts", tags=["receipts"])
     app.include_router(accrued_router, prefix="/api/accrued", tags=["accrued"])
+
+    app.include_router(cash_router, prefix="/api", tags=["cash"])  # ✅ ADDED
 
     # Static UI
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -7,7 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..core.auth import require_admin, CurrentUser
+from ..core.auth import get_current_user, require_admin, CurrentUser
 from ..core.config import settings
 from ..core.zoho import zoho_json, zoho
 from ..services.pending_store import pending_store
@@ -24,9 +24,22 @@ class RejectPayload(BaseModel):
 
 
 @router.get("/expenses")
-def list_pending(_: CurrentUser = Depends(require_admin)):
+def list_pending(user: CurrentUser = Depends(get_current_user)):
     # IMPORTANT: Only pending items must show here
-    return {"pending": pending_store.list_pending()}
+    items = pending_store.list_pending()
+
+    # ✅ FIX: restrict non-admin users to their allowed cash accounts
+    if not user.is_admin:
+        allowed = set(user.allowed_cash_accounts or [])
+        items = [
+            p for p in items
+            if (
+                p.get("created_by") == user.user_id
+                or p.get("paid_through_account_id") in allowed
+            )
+        ]
+
+    return {"pending": items}
 
 
 def _build_zoho_expense_payload(pending: dict) -> dict:
