@@ -1,1 +1,49 @@
-{}
+{
+  "1766921849341": {
+    "expense_id": "1766921849341",
+    "status": "rejected",
+    "created_at": 1766921849,
+    "created_by": null,
+    "pending_kind": "accrued_payment",
+    "accrued_expense_id": "",
+    "source_accrued_expense_id": "1766921799010",
+    "source_expense_id": "",
+    "accrued_account_id": "",
+    "accrued_account_name": "",
+    "date": "2025-12-28",
+    "vendor_id": "5571826000000302001",
+    "vendor_name": "Iraqi Airways",
+    "amount": 800,
+    "reference_number": "Good reference payments made",
+    "expense_type": "",
+    "expense_account_id": null,
+    "paid_through_account_id": "5571826000000000358",
+    "paid_through_account_name": "Petty Cash",
+    "description": "Payment made to clear accrued expense 1766921799010",
+    "receipts": [
+      {
+        "filename": "1766921849_INV-000005-2.pdf",
+        "url": "/uploads/1766921849341/1766921849_INV-000005-2.pdf",
+        "created_at": 1766921849
+      }
+    ],
+    "zoho_posted": false,
+    "zoho_error": null,
+    "zoho_response": null,
+    "balance": null,
+    "clearing": [],
+    "cleared_at": null,
+    "payload": {
+      "date": "2025-12-28",
+      "vendor_id": "5571826000000302001",
+      "vendor_name": "Iraqi Airways",
+      "amount": 800,
+      "reference_number": "Good reference payments made",
+      "paid_through_account_id": "5571826000000000358",
+      "paid_through_account_name": "Petty Cash",
+      "description": "Payment made to clear accrued expense 1766921799010",
+      "expense_account_id": null
+    },
+    "rejected_at": 1766921902
+  }
+}

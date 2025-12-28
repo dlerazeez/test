@@ -6,35 +6,28 @@ from typing import Any, Dict, Optional
 import httpx
 from fastapi import HTTPException
 
-from .config import settings
-from .utils import ensure_ok_zoho
+from app.core.config import settings
+from app.core.utils import ensure_ok_zoho
 
 
 class ZohoClient:
     def __init__(self) -> None:
-        self.client_id = settings.zoho_client_id
-        self.client_secret = settings.zoho_client_secret
-        self.refresh_token = settings.zoho_refresh_token
-        self.org_id = settings.zoho_org_id
-        self.dc = settings.zoho_dc
-        self.books_base_url = settings.zoho_books_base_url
+        self.client_id = (settings.zoho_client_id or "").strip()
+        self.client_secret = (settings.zoho_client_secret or "").strip()
+        self.refresh_token = (settings.zoho_refresh_token or "").strip()
+        self.org_id = (settings.zoho_org_id or "").strip()
+        self.dc = (settings.zoho_dc or "com").strip()
+        self.books_base_url = (settings.zoho_books_base_url or "").strip()
 
         self._access_token: Optional[str] = None
-        self._access_token_expiry: float = 0.0  # epoch seconds
+        self._access_token_expiry: float = 0.0
 
-        # Accounts server base (Zoho Accounts). For most DCs:
-        # com -> https://accounts.zoho.com
-        # eu  -> https://accounts.zoho.eu
-        # in  -> https://accounts.zoho.in
-        # au  -> https://accounts.zoho.com.au
-        # ca  -> https://accounts.zohocloud.ca
-        # jp  -> https://accounts.zoho.jp
-        # sa  -> https://accounts.zoho.sa
-        self.zoho_auth_url = self._accounts_url()
+    # ---------------------------------------------------------
+    # OAuth
+    # ---------------------------------------------------------
 
     def _accounts_url(self) -> str:
-        dc = (self.dc or "com").lower().strip()
-        mapping = {
+        return {
             "com": "https://accounts.zoho.com",
             "eu": "https://accounts.zoho.eu",
             "in": "https://accounts.zoho.in",
@@ -42,35 +35,39 @@ class ZohoClient:
             "ca": "https://accounts.zohocloud.ca",
             "jp": "https://accounts.zoho.jp",
             "sa": "https://accounts.zoho.sa",
-        }
-        return mapping.get(dc, "https://accounts.zoho.com")
+        }.get(self.dc, "https://accounts.zoho.com")
 
     async def _refresh_access_token(self) -> str:
-        url = f"{self.zoho_auth_url}/oauth/v2/token"
+        if not (self.client_id and self.client_secret and self.refresh_token):
+            raise HTTPException(status_code=500, detail="Zoho OAuth settings missing")
+
+        url = f"{self._accounts_url()}/oauth/v2/token"
         data = {
             "refresh_token": self.refresh_token,
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "grant_type": "refresh_token",
         }
+
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(url, data=data)
-            r.raise_for_status()
-            payload = r.json()
 
-        token = payload.get("access_token")
-        expires_in = payload.get("expires_in", 3600)
-        if not token:
-            raise RuntimeError(f"Failed to refresh Zoho token: {payload}")
+        payload = r.json()
+        if r.status_code != 200 or "access_token" not in payload:
+            raise HTTPException(status_code=502, detail=payload)
 
-        self._access_token = token
-        self._access_token_expiry = time.time() + int(expires_in) - 60  # 60s buffer
-        return token
+        self._access_token = payload["access_token"]
+        self._access_token_expiry = time.time() + int(payload.get("expires_in", 3600)) - 60
+        return self._access_token
 
     async def get_access_token(self) -> str:
         if self._access_token and time.time() < self._access_token_expiry:
             return self._access_token
         return await self._refresh_access_token()
+
+    # ---------------------------------------------------------
+    # Core request
+    # ---------------------------------------------------------
 
     async def request(
         self,
@@ -86,43 +83,42 @@ class ZohoClient:
         headers = {"Authorization": f"Zoho-oauthtoken {token}"}
 
         params = params or {}
-        if "organization_id" not in params:
-            if self.org_id:
-                params["organization_id"] = self.org_id
-            else:
-                raise HTTPException(status_code=500, detail="ZOHO_ORG_ID is not set")
+        params["organization_id"] = self.org_id
 
         url = f"{self.books_base_url.rstrip('/')}/{path.lstrip('/')}"
 
         async with httpx.AsyncClient(timeout=60) as client:
-            try:
-                r = await client.request(
-                    method,
-                    url,
-                    headers=headers,
-                    params=params,
-                    json=json,
-                    data=data,
-                    files=files,
-                )
-                r.raise_for_status()
-                return r.json()
-            except httpx.HTTPStatusError as e:
+            r = await client.request(
+                method,
+                url,
+                headers=headers,
+                params=params,
+                json=json,
+                data=data,
+                files=files,
+            )
+
+            if r.status_code >= 400:
+                # try JSON first; fallback to text
                 try:
-                    detail = e.response.json()
+                    err = r.json()
                 except Exception:
-                    detail = e.response.text
-                raise HTTPException(status_code=e.response.status_code, detail=detail)
-            except httpx.RequestError as e:
-                raise HTTPException(status_code=502, detail=str(e))
+                    err = {"raw": r.text}
+                raise HTTPException(
+                    status_code=502,
+                    detail={"zoho_status": r.status_code, "zoho_error": err},
+                )
+
+            return r.json()
 
 
 zoho = ZohoClient()
 
 
 # -------------------------------------------------------------------
-# Backwards-compatible helpers for routers (assets.py, expenses, etc.)
+# BACKWARD-COMPATIBLE HELPERS (USED BY ROUTERS)
 # -------------------------------------------------------------------
+
 async def zoho_request(
     method: str,
     path: str,
@@ -132,7 +128,14 @@ async def zoho_request(
     data: Optional[Dict[str, Any]] = None,
     files: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    return await zoho.request(method, path, params=params, json=json, data=data, files=files)
+    return await zoho.request(
+        method,
+        path,
+        params=params,
+        json=json,
+        data=data,
+        files=files,
+    )
 
 
 async def zoho_json(
@@ -143,5 +146,11 @@ async def zoho_json(
     json: Optional[Dict[str, Any]] = None,
     data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    resp = await zoho_request(method, path, params=params, json=json, data=data)
+    resp = await zoho_request(
+        method,
+        path,
+        params=params,
+        json=json,
+        data=data,
+    )
     return ensure_ok_zoho(resp)

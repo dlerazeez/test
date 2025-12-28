@@ -3,8 +3,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.factory import create_app
+from app.routers import cash
 
 app = create_app()
+
+app.include_router(cash.router, prefix="/api/cash", tags=["cash"])
 
 # Resolve frontend directory robustly:
 # - if ./frontend exists next to this file, use it

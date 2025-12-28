@@ -1,23 +1,23 @@
-# Python cache
+# Python
 __pycache__/
 *.pyc
-
-# Virtual environments
+*.pyo
+*.pyd
 .venv/
 venv/
+.env
 
-# Databases
-*.db
-*.sqlite
-
-# Uploaded files
-data/uploads/
-
-# Runtime data
-data/sessions.json
-data/users.json
-app/services/pending_expenses.json
-
-# OS files
+# Logs / local state
+*.log
 .DS_Store
 
+# Uploads / generated
+uploads/
+data/
+*.sqlite
+*.db
+
+# Node (if any)
+node_modules/
+dist/
+build/
